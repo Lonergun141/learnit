@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Lint, types, tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm test
+
+      # typecheck and build both write .next/types, so they must not overlap.
+      - run: npm run typecheck
+
+      - run: npm run build
+        env:
+          # Build-time placeholders only. Nothing here reaches a real project:
+          # every page that touches data is dynamic and authenticates at request
+          # time. Real values live in the Vercel project environment.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_APP_URL: https://placeholder.invalid
+          TELEGRAM_BOT_USERNAME: placeholder_bot
+
+  database:
+    name: Migrations and pgTAP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start --exclude studio,realtime,storage-api,imgproxy,mailpit,vector,supavisor
+
+      - name: Apply every migration from scratch
+        run: supabase db reset --yes
+
+      - name: Run the pgTAP suite
+        run: supabase test db --local
+
+      - name: Database advisors
+        run: supabase db lint --local
