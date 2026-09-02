@@ -1,0 +1,80 @@
+"use client";
+
+import { ArrowRight, LoaderCircle } from "lucide-react";
+import Link from "next/link";
+import { useActionState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { InputField } from "@/components/ui/field";
+
+import { loginAction, signupAction } from "../actions";
+import type { AuthActionState } from "../lib/auth-schema";
+
+const initialState: AuthActionState = {};
+
+interface AuthFormProps {
+  mode: "login" | "signup";
+}
+
+export function AuthForm({ mode }: AuthFormProps) {
+  const isSignup = mode === "signup";
+  const [state, action, pending] = useActionState(
+    isSignup ? signupAction : loginAction,
+    initialState,
+  );
+
+  return (
+    <form action={action} className="mt-8 grid gap-5" noValidate>
+      {isSignup ? (
+        <InputField
+          label="Display name"
+          name="displayName"
+          autoComplete="name"
+          placeholder="Ada Learner"
+          defaultValue={state.values?.displayName}
+          error={state.fieldErrors?.displayName?.[0]}
+          required
+        />
+      ) : null}
+      <InputField
+        label="Email"
+        name="email"
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        placeholder="you@example.com"
+        defaultValue={state.values?.email}
+        error={state.fieldErrors?.email?.[0]}
+        required
+      />
+      <InputField
+        label="Password"
+        hint={isSignup ? "12+ characters" : undefined}
+        name="password"
+        type="password"
+        autoComplete={isSignup ? "new-password" : "current-password"}
+        error={state.fieldErrors?.password?.[0]}
+        required
+      />
+      {state.message ? (
+        <p className="rounded-xl bg-surface-muted px-3.5 py-3 text-sm leading-5 text-ink-muted" role="status">
+          {state.message}
+        </p>
+      ) : null}
+      <Button className="mt-1 w-full" disabled={pending} type="submit">
+        {pending ? <LoaderCircle className="animate-spin" size={17} /> : null}
+        {pending ? "Working…" : isSignup ? "Create account" : "Sign in"}
+        {!pending ? <ArrowRight size={17} /> : null}
+      </Button>
+      <p className="text-center text-sm text-ink-muted">
+        {isSignup ? "Already have an account?" : "New to LearnIT?"}{" "}
+        <Link
+          className="font-semibold text-ink underline decoration-line-strong hover:decoration-signal"
+          href={isSignup ? "/login" : "/signup"}
+        >
+          {isSignup ? "Sign in" : "Create one"}
+        </Link>
+      </p>
+    </form>
+  );
+}

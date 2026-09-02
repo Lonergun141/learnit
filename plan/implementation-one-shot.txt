@@ -1,0 +1,2333 @@
+You are implementing LearnIT v2.
+
+This is a full implementation task, not a planning-only task.
+
+Work from the current repository root.
+
+Do not stop after producing an architecture proposal.
+Inspect the existing repository, create a concrete implementation plan/TODO list,
+then execute it phase by phase until the application is implemented, tested,
+documented, and production-ready as far as possible without performing unsafe
+remote deployments.
+
+Do not ask me questions unless a genuinely non-resolvable external credential or
+authorization prevents implementation.
+
+===============================================================================
+PROJECT GOAL
+===============================================================================
+
+LearnIT is a multi-user cloud learning platform.
+
+Users save YouTube videos or web articles through:
+
+1. the LearnIT web application
+2. a shared Telegram bot
+3. an optional YouTube playlist integration
+
+LearnIT automatically:
+
+1. captures the URL
+2. retrieves the transcript/article
+3. classifies it into a reusable topic
+4. generates:
+   - Study Guide
+   - Briefing Document
+   - Quiz
+5. stores everything in Supabase
+6. displays the materials inside the LearnIT web app
+7. sends a Telegram digest to the correct user
+
+The production application must NOT depend on:
+
+- Baserow
+- NotebookLM
+- notebooklm-py
+- Claude Code
+- Claude Cowork
+- a local scheduler
+- my laptop being online
+
+The previous prototype proved the workflow behavior. This repository is the real
+cloud/multi-user implementation.
+
+===============================================================================
+NON-NEGOTIABLE PRODUCT CONSTRAINTS
+===============================================================================
+
+This is currently a FREE MVP.
+
+Do NOT implement:
+
+- Stripe
+- HitPay
+- PayPal
+- subscription billing
+- checkout
+- plan management
+- payment gateways
+- premium tiers
+- credit-card collection
+
+There is no billing system in this version.
+
+The architecture should be designed so billing could be added later without
+polluting the current implementation.
+
+===============================================================================
+CURRENT ENVIRONMENT
+===============================================================================
+
+The repo is a newly-created Next.js application.
+
+Inspect package.json and use the versions actually installed.
+
+Do not assume an outdated Next.js API.
+
+Use:
+
+- TypeScript
+- Next.js App Router
+- Tailwind CSS
+- Supabase
+- Gemini API
+- Supadata
+- Firecrawl
+- Telegram Bot API
+
+Environment variables are already being configured locally.
+
+Expected server-side variables include:
+
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SERVICE_ROLE_KEY
+
+GEMINI_API_KEY
+GEMINI_MODEL
+
+SUPADATA_API_KEY
+FIRECRAWL_API_KEY
+
+TELEGRAM_BOT_TOKEN
+TELEGRAM_BOT_USERNAME
+TELEGRAM_WEBHOOK_SECRET
+
+The Telegram username is:
+
+learnit_teampura_bot
+
+Do not hardcode secrets.
+
+The bot username itself is not secret, but still prefer the environment
+configuration.
+
+Also introduce:
+
+NEXT_PUBLIC_APP_URL
+
+and:
+
+INTERNAL_CRON_SECRET
+
+If INTERNAL_CRON_SECRET does not exist:
+- add it to .env.example
+- do NOT invent and print a secret in the transcript
+- document how to generate it
+- application code must fail safely if absent in production
+
+Never print .env.local values.
+
+Never expose:
+
+SUPABASE_SERVICE_ROLE_KEY
+GEMINI_API_KEY
+SUPADATA_API_KEY
+FIRECRAWL_API_KEY
+TELEGRAM_BOT_TOKEN
+TELEGRAM_WEBHOOK_SECRET
+INTERNAL_CRON_SECRET
+
+to browser/client bundles.
+
+===============================================================================
+HIGH-LEVEL ARCHITECTURE
+===============================================================================
+
+Target architecture:
+
+                         LearnIT
+                            |
+                     Next.js / Vercel
+                            |
+                      Supabase Auth
+                            |
+                       PostgreSQL
+                            |
+           +----------------+----------------+
+           |                |                |
+        Telegram          Web UI        YouTube Playlist
+           |                |                |
+           +----------------+----------------+
+                            |
+                       learning_items
+                          status=new
+                            |
+                       learning_jobs
+                            |
+                Supabase Edge Worker
+                            |
+             +--------------+---------------+
+             |                              |
+          YouTube                         Web page
+             |                              |
+         Supadata                       Firecrawl
+             |                              |
+             +--------------+---------------+
+                            |
+                         fetched
+                            |
+                          Gemini
+                            |
+                     topic classifier
+                            |
+                         sorted
+                            |
+                          Gemini
+                            |
+               +------------+-------------+
+               |            |             |
+          Study Guide     Briefing       Quiz
+               |            |             |
+               +------------+-------------+
+                            |
+                    topic_artifacts
+                            |
+                           done
+                            |
+             +--------------+---------------+
+             |                              |
+         LearnIT UI                  Telegram Digest
+
+
+The laptop must NOT be part of the runtime architecture.
+
+===============================================================================
+DESIGN PRINCIPLE: TOPIC-LEVEL MATERIALS
+===============================================================================
+
+Important:
+
+Learning material belongs to a TOPIC, not just an individual source.
+
+This reproduces the successful prototype behavior.
+
+Example:
+
+Topic: React Native
+
+Sources:
+- Babel configuration video
+- Navigation article
+- Performance video
+
+Generated current materials:
+
+React Native
+├── Study Guide
+├── Briefing
+└── Quiz
+
+When a new source is classified into React Native:
+
+1. the new item becomes sorted
+2. a topic build job is created
+3. the current topic materials are regenerated using the relevant topic sources
+4. previous artifacts remain as history
+5. the new versions become current
+6. newly sorted items become done
+
+Do NOT generate isolated permanent learning material per source unless needed
+internally.
+
+===============================================================================
+PHASE 0 — REPOSITORY INSPECTION
+===============================================================================
+
+Before changing files:
+
+1. Inspect:
+   - package.json
+   - package-lock.json
+   - src/
+   - app structure
+   - tsconfig
+   - eslint config
+   - Tailwind config
+   - .gitignore
+   - .env.example if present
+
+2. Determine:
+   - installed Next.js version
+   - installed React version
+   - whether the project uses src/
+   - current routing structure
+   - current ESLint command
+   - current TypeScript configuration
+
+3. Create an internal TODO checklist for every phase below.
+
+Do not simply output the TODO list and stop.
+
+Proceed immediately into implementation.
+
+===============================================================================
+PHASE 1 — DEPENDENCIES
+===============================================================================
+
+Install only dependencies actually needed.
+
+Expected categories:
+
+Supabase:
+- @supabase/supabase-js
+- @supabase/ssr
+
+Validation:
+- zod
+
+Gemini:
+- current official Google GenAI JavaScript package
+
+Supadata:
+- current official @supadata/js package if compatible with the target runtime
+
+UI:
+- lucide-react
+
+Testing:
+- vitest
+- appropriate lightweight testing dependencies only when useful
+
+Supabase tooling:
+- add Supabase CLI as a dev dependency if appropriate, or use npx safely
+
+For Firecrawl:
+- use the current official Firecrawl SDK if compatible with Supabase Edge/Deno
+- otherwise use the current documented API from a dedicated provider adapter
+
+Do not invent package names or methods.
+
+Use installed package type definitions / official current SDK surfaces.
+
+Do not install a massive component framework unless the project truly needs it.
+
+===============================================================================
+PHASE 2 — PROJECT STRUCTURE
+===============================================================================
+
+Create a clean architecture approximately like:
+
+src/
+├── app/
+│   ├── (auth)/
+│   │   ├── login/
+│   │   └── signup/
+│   │
+│   ├── (app)/
+│   │   ├── layout.tsx
+│   │   ├── dashboard/
+│   │   ├── library/
+│   │   │   └── [id]/
+│   │   ├── topics/
+│   │   │   └── [id]/
+│   │   └── settings/
+│   │       └── integrations/
+│   │
+│   ├── auth/
+│   │   └── callback/
+│   │
+│   ├── api/
+│   │   └── health/
+│   │
+│   └── page.tsx
+│
+├── components/
+│   ├── layout/
+│   ├── library/
+│   ├── topics/
+│   ├── quiz/
+│   ├── telegram/
+│   └── ui/
+│
+├── lib/
+│   ├── supabase/
+│   │   ├── client.ts
+│   │   ├── server.ts
+│   │   └── auth.ts
+│   ├── env/
+│   ├── learning/
+│   │   ├── urls.ts
+│   │   ├── topics.ts
+│   │   └── statuses.ts
+│   ├── telegram/
+│   └── utils/
+│
+└── types/
+
+supabase/
+├── migrations/
+├── functions/
+│   ├── _shared/
+│   ├── telegram-webhook/
+│   └── process-learning-jobs/
+└── config.toml
+
+scripts/
+├── set-telegram-webhook.*
+├── delete-telegram-webhook.*
+└── check-env.*
+
+docs/
+├── ARCHITECTURE.md
+├── DATABASE.md
+├── DEPLOYMENT.md
+├── SECURITY.md
+├── TELEGRAM.md
+└── TESTING.md
+
+Use equivalent organization if the installed Next.js version suggests a better
+current pattern.
+
+===============================================================================
+PHASE 3 — SUPABASE DATABASE
+===============================================================================
+
+Initialize Supabase locally if not already initialized.
+
+Create timestamped SQL migrations.
+
+Use UUID primary keys with gen_random_uuid().
+
+Create enums or equivalent constraints for:
+
+learning_status:
+- new
+- fetched
+- sorted
+- done
+- failed
+
+learning_source:
+- telegram
+- web
+- youtube_playlist
+- manual
+
+content_type:
+- youtube
+- article
+
+job_stage:
+- fetch
+- classify
+- build_topic
+- capture_playlist
+- digest
+
+job_status:
+- queued
+- running
+- succeeded
+- failed
+- dead
+
+artifact_kind:
+- study_guide
+- briefing
+- quiz
+
+digest_status:
+- sent
+- skipped
+- failed
+
+-------------------------------------------------------------------------------
+TABLE: profiles
+-------------------------------------------------------------------------------
+
+Fields:
+
+id uuid primary key references auth.users(id) on delete cascade
+display_name text
+timezone text default 'UTC'
+created_at timestamptz default now()
+updated_at timestamptz default now()
+
+Create auth.users trigger to create profiles automatically.
+
+-------------------------------------------------------------------------------
+TABLE: user_settings
+-------------------------------------------------------------------------------
+
+user_id uuid primary key references auth.users(id) on delete cascade
+
+digest_enabled boolean default true
+digest_hour smallint default 6
+timezone text default 'UTC'
+
+youtube_playlist_id text null
+youtube_capture_enabled boolean default false
+youtube_last_polled_at timestamptz null
+
+daily_item_limit integer default 20
+
+created_at
+updated_at
+
+Constraints:
+
+digest_hour between 0 and 23
+daily_item_limit sensible MVP range
+
+Create settings automatically for new auth users.
+
+-------------------------------------------------------------------------------
+TABLE: telegram_connections
+-------------------------------------------------------------------------------
+
+id uuid primary key
+user_id uuid not null references auth.users on delete cascade
+chat_id bigint not null
+telegram_username text
+telegram_first_name text
+telegram_last_name text
+connected_at timestamptz default now()
+updated_at timestamptz default now()
+
+Unique:
+user_id
+chat_id
+
+One LearnIT account -> one Telegram chat for MVP.
+One Telegram chat -> one LearnIT account.
+
+-------------------------------------------------------------------------------
+TABLE: telegram_link_tokens
+-------------------------------------------------------------------------------
+
+id uuid primary key
+user_id uuid not null references auth.users on delete cascade
+token_hash text not null unique
+expires_at timestamptz not null
+used_at timestamptz null
+created_at timestamptz default now()
+
+Never store the plaintext linking token.
+
+-------------------------------------------------------------------------------
+TABLE: topics
+-------------------------------------------------------------------------------
+
+id uuid primary key
+user_id uuid not null
+name text not null
+normalized_name text not null
+created_at
+updated_at
+
+Unique:
+(user_id, normalized_name)
+
+Topic vocabulary is USER-SCOPED.
+
+Alice's React Native topic and Bob's React Native topic are separate database
+records.
+
+-------------------------------------------------------------------------------
+TABLE: learning_items
+-------------------------------------------------------------------------------
+
+id uuid primary key
+user_id uuid not null references auth.users on delete cascade
+
+source learning_source not null
+content_type content_type not null
+
+url text not null
+canonical_url text not null
+
+title text
+author text
+transcript text
+
+topic_id uuid null references topics(id)
+
+status learning_status default 'new'
+
+note text
+error text
+failure_stage job_stage null
+
+provider_metadata jsonb default '{}'
+
+added_at timestamptz default now()
+fetched_at timestamptz
+sorted_at timestamptz
+built_at timestamptz
+
+created_at
+updated_at
+
+Unique:
+(user_id, canonical_url)
+
+Same user cannot save the same canonical URL twice.
+
+Different users CAN save the same URL.
+
+Indexes:
+user_id
+status
+topic_id
+created_at
+built_at
+
+-------------------------------------------------------------------------------
+TABLE: topic_artifacts
+-------------------------------------------------------------------------------
+
+id uuid primary key
+
+user_id uuid not null
+topic_id uuid not null references topics on delete cascade
+
+kind artifact_kind not null
+
+version integer not null
+is_current boolean default true
+
+content_markdown text
+content_json jsonb
+
+source_item_ids uuid[] default '{}'
+
+model text
+created_at timestamptz default now()
+
+Maintain artifact history.
+
+There must be only one CURRENT artifact for each:
+
+(topic_id, kind)
+
+Use a partial unique index:
+
+topic + kind WHERE is_current = true
+
+Old versions remain stored with is_current=false.
+
+-------------------------------------------------------------------------------
+TABLE: learning_jobs
+-------------------------------------------------------------------------------
+
+id uuid primary key
+
+user_id uuid not null
+
+item_id uuid null references learning_items on delete cascade
+topic_id uuid null references topics on delete cascade
+
+stage job_stage not null
+status job_status default 'queued'
+
+payload jsonb default '{}'
+
+attempts integer default 0
+max_attempts integer default 3
+
+run_after timestamptz default now()
+locked_at timestamptz
+locked_by text
+
+last_error text
+
+created_at
+updated_at
+
+Indexes for:
+status
+run_after
+user_id
+item_id
+topic_id
+
+Prevent duplicate ACTIVE jobs where appropriate.
+
+Examples:
+
+only one queued/running:
+- fetch job per item
+- classify job per item
+- build_topic job per topic
+- capture_playlist job per user
+
+Use partial unique indexes where practical.
+
+-------------------------------------------------------------------------------
+TABLE: digests
+-------------------------------------------------------------------------------
+
+id uuid primary key
+user_id uuid not null
+digest_date date not null
+
+status digest_status not null
+
+telegram_message_id bigint
+error text
+sent_at timestamptz
+created_at timestamptz default now()
+
+Unique:
+(user_id, digest_date)
+
+===============================================================================
+PHASE 4 — DATABASE HELPERS
+===============================================================================
+
+Create reusable updated_at trigger.
+
+Create secure SQL/RPC functions where appropriate.
+
+At minimum implement:
+
+1. claim_learning_jobs(limit, worker_id)
+
+Behavior:
+
+- select queued jobs
+- run_after <= now()
+- FOR UPDATE SKIP LOCKED
+- mark running
+- set locked_at
+- set locked_by
+- increment attempts
+- return claimed jobs
+
+This must be concurrency-safe.
+
+2. requeue_stale_jobs()
+
+For jobs stuck running beyond a reasonable lock timeout:
+
+- retry if attempts < max_attempts
+- otherwise mark dead
+
+3. enqueue_due_maintenance_jobs()
+
+This should:
+
+- enqueue capture_playlist jobs for users with:
+  youtube_capture_enabled=true
+  and last poll is due
+
+- enqueue digest jobs when user's LOCAL time reaches digest_hour
+  and no digest exists for that user's local date
+
+Timezone handling must be user-specific.
+
+Use IANA timezone names.
+
+Do not allow one invalid timezone string to crash processing for every user.
+
+Fallback to UTC when necessary.
+
+4. create_learning_item_for_current_user(...)
+
+Atomically:
+- use auth.uid()
+- insert the item if not duplicate
+- enqueue fetch job
+- return created or existing item
+
+5. create_learning_item_for_user(...)
+
+For trusted service-role use by Telegram/playlist workers.
+
+Do not expose this RPC to ordinary authenticated users.
+
+6. retry_learning_item(item_id)
+
+For the authenticated owner.
+
+Determine correct retry stage from:
+
+status
+failure_stage
+
+Examples:
+
+failed fetch:
+  set status=new
+  enqueue fetch
+
+fetched + classify error:
+  enqueue classify
+
+sorted + build error:
+  enqueue build_topic
+
+Clear only the relevant retry error.
+
+7. complete_topic_build(...)
+
+Atomic transaction:
+
+- mark previous current topic artifacts is_current=false
+- insert new study guide artifact
+- insert new briefing artifact
+- insert new quiz artifact
+- set those new artifacts current
+- mark newly sorted items for that topic done
+- set built_at
+- clear build errors
+
+No partially-written successful build is acceptable.
+
+===============================================================================
+PHASE 5 — ROW LEVEL SECURITY
+===============================================================================
+
+Enable RLS on every user-owned table.
+
+Implement policies so authenticated users can only see their own:
+
+profiles
+user_settings
+telegram_connections
+telegram_link_tokens
+topics
+learning_items
+topic_artifacts
+learning_jobs
+digests
+
+Use auth.uid() = user_id or equivalent.
+
+Do NOT rely only on UI filtering.
+
+Service role is trusted for Edge Functions.
+
+Normal browser clients must be physically unable to query another user's rows.
+
+telegram_connections:
+- authenticated user can read/delete their own connection
+- creation by Telegram webhook uses trusted service role
+
+learning_jobs:
+- authenticated user may read their own job state
+- user must NOT arbitrarily modify worker jobs
+
+topic_artifacts:
+- read-only to owning user from client
+
+Create docs/SECURITY.md explaining the model.
+
+===============================================================================
+PHASE 6 — SUPABASE AUTH IN NEXT.JS
+===============================================================================
+
+Implement Supabase SSR authentication using the CURRENT recommended pattern for
+the installed Next.js version.
+
+Do not copy an outdated middleware implementation blindly.
+
+If the current Next.js version uses proxy.ts rather than middleware.ts, use the
+correct current pattern.
+
+Implement:
+
+/login
+/signup
+/auth/callback
+
+Support email/password.
+
+Handle email confirmation gracefully.
+
+Protected app routes must redirect unauthenticated users to login.
+
+Authenticated users visiting login/signup should be redirected to dashboard.
+
+Create:
+
+browser Supabase client
+server Supabase client
+
+Never put service-role credentials in browser code.
+
+===============================================================================
+PHASE 7 — APP SHELL / UI
+===============================================================================
+
+Create a polished but lightweight responsive application shell.
+
+Navigation:
+
+Dashboard
+Library
+Topics
+Settings
+
+Desktop:
+left sidebar
+
+Mobile:
+responsive navigation
+
+Use Tailwind.
+
+Do not make the UI look like a default create-next-app demo.
+
+Visual direction:
+
+- clean
+- modern productivity app
+- compact
+- readable
+- professional
+- strong information hierarchy
+- subtle borders
+- responsive cards/tables
+- accessible contrast
+
+Do not overuse gradients.
+
+===============================================================================
+PHASE 8 — DASHBOARD
+===============================================================================
+
+Dashboard should show:
+
+- total library items
+- processing count
+- completed count
+- failed/needs-attention count
+- topic count
+- recently completed items
+- recently added items
+
+Add a quick "Save a link" form.
+
+Saving a link should:
+
+1. validate URL
+2. canonicalize URL
+3. determine YouTube vs article
+4. call create_learning_item_for_current_user
+5. automatically enqueue fetch
+6. show duplicate result cleanly
+
+Do not process external APIs synchronously during the web request.
+
+===============================================================================
+PHASE 9 — URL NORMALIZATION
+===============================================================================
+
+Implement robust URL utilities with tests.
+
+Remove common tracking parameters:
+
+utm_*
+si
+fbclid
+gclid where safe
+
+Remove fragments.
+
+Normalize trailing slash.
+
+YouTube URL formats:
+
+youtube.com/watch?v=
+youtu.be/
+youtube.com/shorts/
+youtube.com/embed/
+
+Canonical YouTube URL should use one consistent video form based on the extracted
+video ID.
+
+Determine content_type:
+
+youtube
+article
+
+Do not treat an arbitrary URL containing "youtube" text as YouTube.
+Parse the hostname.
+
+===============================================================================
+PHASE 10 — LIBRARY UI
+===============================================================================
+
+Routes:
+
+/library
+/library/[id]
+
+Library list supports:
+
+- search
+- status filter
+- topic filter
+- source filter
+
+Show:
+
+title
+topic
+source
+status
+added date
+
+Statuses need clear badges:
+
+new
+fetched
+sorted
+done
+failed
+
+Item detail page shows:
+
+source URL
+title
+author
+topic
+status
+timestamps
+note
+error if present
+
+If retryable:
+show Retry action
+
+If done:
+link to topic learning materials.
+
+Never expose raw service metadata unnecessarily.
+
+===============================================================================
+PHASE 11 — TOPICS UI
+===============================================================================
+
+Routes:
+
+/topics
+/topics/[id]
+
+Topics page:
+
+- topic name
+- source/item count
+- last generated date
+- current artifact availability
+
+Topic detail:
+
+Header
+Sources
+Tabs:
+
+Study Guide
+Briefing
+Quiz
+
+Study Guide and Briefing render Markdown safely.
+
+Do not render arbitrary HTML from AI output.
+
+Quiz must be interactive.
+
+===============================================================================
+PHASE 12 — QUIZ UI
+===============================================================================
+
+Quiz structure must support:
+
+question
+4 or more options when appropriate
+correct answer
+explanation
+
+Client UI:
+
+Question X / N
+radio/select options
+Check Answer
+show correct/incorrect
+show explanation
+Next Question
+final score
+
+Do not reveal correct answer before user checks.
+
+Quiz progress may remain local client state for MVP.
+
+No need to persist quiz scores unless easy and clean.
+
+===============================================================================
+PHASE 13 — TELEGRAM ACCOUNT LINKING
+===============================================================================
+
+The same Telegram bot is shared across all users.
+
+Bot:
+
+learnit_teampura_bot
+
+Do NOT create one bot per user.
+
+Flow:
+
+LearnIT web user
+    |
+Settings -> Connect Telegram
+    |
+server generates cryptographically secure random one-time token
+    |
+store SHA-256 hash only
+    |
+expires in 15 minutes
+    |
+construct Telegram deep link:
+t.me/<bot>?start=<plaintext_token>
+
+Do not store plaintext token.
+
+Create Telegram integration settings UI:
+
+Not connected:
+- Connect Telegram button
+
+Connected:
+- username/name
+- connected date
+- Disconnect button
+
+When generating a token:
+- invalidate/prune old unused tokens for that user where appropriate
+
+===============================================================================
+PHASE 14 — TELEGRAM WEBHOOK EDGE FUNCTION
+===============================================================================
+
+Implement:
+
+supabase/functions/telegram-webhook
+
+This is a public Telegram webhook endpoint.
+
+Do NOT require Supabase user JWT.
+
+Instead validate:
+
+X-Telegram-Bot-Api-Secret-Token
+
+against TELEGRAM_WEBHOOK_SECRET.
+
+Use timing-safe comparison where feasible.
+
+Reject invalid secret.
+
+Never log the bot token.
+
+Handle:
+
+/start <token>
+
+1. hash token
+2. find unused, unexpired telegram_link_token
+3. identify LearnIT user
+4. ensure Telegram chat is not already bound to another user
+5. upsert connection
+6. mark token used
+7. send friendly confirmation
+
+/start without token:
+send guidance to connect from LearnIT web settings.
+
+Normal messages:
+
+1. identify connection by Telegram chat_id
+2. if not connected:
+   tell user to connect their account first
+3. extract every http/https URL from text/entities
+4. ignore messages with no URLs with a concise help response
+5. preserve non-URL text as note
+6. canonicalize each URL
+7. create learning item for THAT user
+8. enqueue fetch job
+9. report:
+   added
+   duplicate
+   rejected
+
+One Telegram message may contain multiple URLs.
+
+Each URL creates an independent item when new.
+
+Alice's message must never create Bob's item.
+
+===============================================================================
+PHASE 15 — TELEGRAM CLIENT
+===============================================================================
+
+Create shared Telegram API helpers for Edge Functions.
+
+Functions:
+
+sendTelegramMessage()
+splitTelegramMessage()
+extractTelegramUrls()
+
+Do not use Markdown/HTML parse mode for digests by default.
+
+Bare URLs remain clickable.
+
+Split messages around 3500 chars.
+
+Never split a URL.
+
+Never separate an item's title from its link if possible.
+
+Grammar:
+
+1 item failed
+2 items failed
+
+Do not reproduce the prototype's "1 items failed" grammar issue.
+
+===============================================================================
+PHASE 16 — CONTENT PROVIDERS
+===============================================================================
+
+Provider code must be isolated.
+
+Create adapters, not API calls scattered through business logic.
+
+-------------------------------------------------------------------------------
+SUPADATA
+-------------------------------------------------------------------------------
+
+Use current Supadata capabilities.
+
+Use the official current JavaScript SDK when compatible.
+
+YouTube transcript:
+
+- accept canonical video URL or ID
+- retrieve transcript
+- join segments into readable full text
+- store language/provider metadata where useful
+
+Also retrieve real YouTube metadata when available:
+
+title
+channel/author
+
+Do not guess author.
+
+YouTube playlist integration:
+
+Use Supadata's CURRENT playlist-video capability rather than the old RSS
+15-entry approach.
+
+The current Supadata API/SDK supports retrieving playlist video IDs with a
+configurable limit.
+
+Use that.
+
+This intentionally improves on the prototype and removes the RSS 15-item
+limitation.
+
+Default playlist sync limit:
+100
+
+Make the limit a constant/configurable value.
+
+Dedupe against the user's canonical URLs before creating items.
+
+-------------------------------------------------------------------------------
+FIRECRAWL
+-------------------------------------------------------------------------------
+
+Use Scrape only.
+
+For article URLs:
+
+- retrieve main readable content
+- prefer Markdown
+- request main content only
+- obtain page title
+- obtain byline/author only if returned
+- never infer author from domain
+
+Reject retrieval as unusable if:
+
+- empty
+- obvious error page
+- obvious paywall/interstitial
+- under 500 characters
+
+The 500-character minimum intentionally preserves the successful prototype's
+behavior.
+
+Store concise error.
+
+===============================================================================
+PHASE 17 — PROCESS-LEARNING-JOBS EDGE FUNCTION
+===============================================================================
+
+Implement:
+
+supabase/functions/process-learning-jobs
+
+This is the background worker.
+
+It must not depend on Vercel.
+
+It should use service-role DB access.
+
+Secure invocation with INTERNAL_CRON_SECRET.
+
+Do not expose a privileged public worker endpoint without verification.
+
+Worker process:
+
+1. claim a small batch safely
+2. process jobs independently
+3. mark/requeue/dead correctly
+
+Default batch size should be conservative.
+
+Do not let one failed job terminate unrelated jobs.
+
+Job stages:
+
+fetch
+classify
+build_topic
+capture_playlist
+digest
+
+===============================================================================
+PHASE 18 — FETCH JOB
+===============================================================================
+
+For job stage fetch:
+
+Read item.
+
+If content_type=youtube:
+
+Supadata:
+- transcript
+- title metadata
+- channel metadata if available
+
+If article:
+
+Firecrawl.
+
+Success requirements:
+
+usable transcript/content >= 500 chars
+
+On success:
+
+title
+author when available
+transcript
+fetched_at=now
+status=fetched
+error=null
+failure_stage=null
+
+enqueue classify job
+
+Transient provider error:
+
+if attempts < max_attempts:
+- requeue with exponential backoff
+- leave item in previous valid status
+
+Permanent error or max attempts:
+
+For FETCH failure:
+status=failed
+failure_stage=fetch
+error=concise reason
+
+Do not store error-page text as transcript.
+
+===============================================================================
+PHASE 19 — TOPIC CLASSIFICATION
+===============================================================================
+
+For classify stage:
+
+Only operate on fetched item.
+
+Get all existing topics for that user.
+
+Use:
+
+title
+first 2,000 words of transcript
+
+Gemini must prefer existing topics.
+
+Classification rules from prototype:
+
+- existing topic wins when reasonably appropriate
+- avoid case duplicates
+- avoid singular/plural duplicates
+- avoid abbreviations producing duplicate topics
+- prefer broader reusable topic
+- topic should be one or two words where practical
+- max 30 chars
+- not the title of the individual source
+
+Examples good:
+
+Prompt Engineering
+React Native
+System Design
+Databases
+Finance
+DevOps
+AI Agents
+
+Bad:
+
+Interesting Stuff
+Misc
+Video 1
+React Native Babel Plugin Error Fix Tutorial
+
+Use structured Gemini output validated with Zod.
+
+Schema concept:
+
+{
+  topic: string,
+  reasoning: string,
+  reuseExisting: boolean
+}
+
+Reasoning is for logs/debug only and should not be exposed unnecessarily.
+
+Before creating a new topic:
+perform deterministic normalized duplicate check in code.
+
+Normalize topic names for matching.
+
+Store human-readable canonical display name.
+
+If reuse:
+use existing topic id.
+
+If genuinely new:
+insert topic.
+
+Success:
+
+item.topic_id = topic
+status=sorted
+sorted_at=now
+error=null
+failure_stage=null
+
+enqueue build_topic job for topic if no active one exists.
+
+If classification ultimately fails:
+leave item at fetched
+failure_stage=classify
+store concise error
+
+Do NOT incorrectly advance to sorted.
+
+===============================================================================
+PHASE 20 — GEMINI PROVIDER
+===============================================================================
+
+Create a dedicated Gemini adapter.
+
+Use:
+
+GEMINI_API_KEY
+GEMINI_MODEL
+
+Use the current official Google GenAI SDK.
+
+Do not invent API methods.
+
+Use structured output with schema validation.
+
+Validate all AI responses using Zod before database writes.
+
+Centralize:
+
+classifyTopic()
+generateTopicMaterials()
+
+Add appropriate timeout/error handling.
+
+Do not silently accept malformed JSON.
+
+===============================================================================
+PHASE 21 — TOPIC BUILD
+===============================================================================
+
+For build_topic job:
+
+Find topic.
+
+Gather relevant source items for that user/topic.
+
+Include:
+
+status=done
+status=sorted
+
+with usable transcripts.
+
+The goal is to regenerate a CURRENT set of topic learning material from the
+topic's sources.
+
+Free-tier safeguards:
+
+- configurable max number of sources
+- configurable total input character budget
+- deterministic truncation
+- never include other user's data
+
+Suggested MVP:
+
+max sources around 20
+total transcript character budget around 100k
+
+Choose sensible constants and document them.
+
+Prefer newest/relevant sources while maintaining useful topic breadth if the
+budget is exceeded.
+
+Generate ALL THREE artifacts in one validated Gemini operation where feasible:
+
+Study Guide
+Briefing
+Quiz
+
+The operation is all-or-nothing.
+
+Do not mark items done if one required artifact is invalid/missing.
+
+-------------------------------------------------------------------------------
+STUDY GUIDE SCHEMA
+-------------------------------------------------------------------------------
+
+Produce polished Markdown plus useful structure.
+
+Must include:
+
+title
+overview
+learning objectives
+key concepts
+detailed sections
+important terminology
+practical examples when supported by sources
+takeaways
+review questions
+
+Do not invent unsupported source facts.
+
+-------------------------------------------------------------------------------
+BRIEFING SCHEMA
+-------------------------------------------------------------------------------
+
+Must include:
+
+title
+executive summary
+key points
+important details
+implications/use cases
+actionable takeaways
+open questions when appropriate
+
+-------------------------------------------------------------------------------
+QUIZ SCHEMA
+-------------------------------------------------------------------------------
+
+Validated JSON:
+
+title
+questions[]
+
+Each question:
+
+id
+question
+options[]
+correctIndex
+explanation
+difficulty
+
+Require:
+- at least 5 questions when source material supports it
+- preferably 8-10
+- valid correctIndex
+- minimum sensible option count
+- no duplicate questions
+
+Quiz should test comprehension, not trivia disconnected from the source.
+
+===============================================================================
+PHASE 22 — BUILD COMPLETION
+===============================================================================
+
+Use complete_topic_build RPC transaction.
+
+On successful generation:
+
+- old current artifacts -> is_current=false
+- insert new Study Guide
+- insert new Briefing
+- insert new Quiz
+- increment version
+- store model
+- store source_item_ids
+- mark new artifacts current
+- mark all relevant sorted topic items done
+- built_at=now
+- clear build error
+
+Existing previously-done items remain done.
+
+On failed generation:
+
+- do NOT change current artifacts
+- sorted items remain sorted
+- failure_stage=build_topic
+- concise error
+- retry if allowed
+
+Never leave a partially-current artifact set.
+
+===============================================================================
+PHASE 23 — YOUTUBE PLAYLIST CAPTURE
+===============================================================================
+
+User settings allow:
+
+youtube_playlist_id
+youtube_capture_enabled
+
+Settings UI should validate playlist id/url without calling secrets in browser.
+
+capture_playlist job:
+
+1. read user settings
+2. if disabled/missing id -> succeed no-op
+3. retrieve playlist video IDs using Supadata playlist API/SDK
+4. limit initial sync to configured amount, default 100
+5. for each video:
+   canonicalize
+   dedupe per user
+   insert source=youtube_playlist
+   content_type=youtube
+   status=new
+   enqueue fetch
+6. update youtube_last_polled_at
+
+Never wipe items removed from playlist.
+
+Do not automatically delete historical learning.
+
+===============================================================================
+PHASE 24 — DAILY MAINTENANCE QUEUE
+===============================================================================
+
+Use Supabase Cron + database functions.
+
+Cron should NOT generate content directly.
+
+Schedule:
+
+1. every minute:
+invoke process-learning-jobs Edge Function
+
+2. hourly:
+call enqueue_due_maintenance_jobs()
+
+enqueue_due_maintenance_jobs determines:
+
+- who needs playlist polling
+- whose digest local hour is due
+
+Store project URL / internal secrets using Supabase Vault for cron invocation.
+
+Do not hardcode secrets in migrations.
+
+Create cron SQL that references named Vault secrets.
+
+Document required Vault secret names.
+
+Suggested:
+
+project_url
+internal_cron_secret
+
+Use pg_cron and pg_net where needed.
+
+===============================================================================
+PHASE 25 — DIGEST JOB
+===============================================================================
+
+Digest is user-specific.
+
+Determine user's local digest_date from settings timezone.
+
+Find items built during that user's local day.
+
+Group by topic.
+
+Telegram message example:
+
+LearnIT Daily Digest
+
+Prompt Engineering
+How Anthropic Engineers Actually Prompt...
+<LearnIT topic URL>
+
+React Native
+How to Solve: Entry.js...
+<LearnIT topic URL>
+
+1 item failed, check LearnIT for details.
+
+IMPORTANT:
+
+Link to LearnIT topic pages, NOT NotebookLM.
+
+Example conceptual link:
+
+<APP_URL>/topics/<topic-id>
+
+Count current failed/needs-attention items for the user.
+
+Correct grammar.
+
+If:
+nothing built today AND zero failures:
+- send nothing
+- record digest status=skipped
+
+If nothing built but failures exist:
+- send concise failure reminder
+
+If no Telegram connection:
+- record skipped or clean no-connection outcome
+- do not repeatedly enqueue every hour
+
+Exactly one digest record per:
+(user_id, local digest_date)
+
+===============================================================================
+PHASE 26 — TELEGRAM SETTINGS UI
+===============================================================================
+
+Settings -> Integrations
+
+Telegram card:
+
+Disconnected:
+- bot name
+- explanation
+- Connect Telegram
+
+Connected:
+- connected account
+- username
+- date
+- Disconnect
+
+YouTube card:
+
+- playlist URL/ID
+- enable capture
+- last sync time
+- Save
+- Sync now
+
+"Sync now" should enqueue capture_playlist job rather than calling Supadata
+directly from browser.
+
+Digest settings:
+
+- enabled
+- hour
+- timezone
+
+Use browser timezone as a suggested initial timezone when appropriate.
+
+Store IANA timezone.
+
+===============================================================================
+PHASE 27 — MANUAL RETRY / ERROR UX
+===============================================================================
+
+Failed or stuck items need actionable UI.
+
+Show:
+
+error
+failure stage
+retry button
+
+Retry must enqueue appropriate job without duplicating active work.
+
+Clear stale error only when retry begins/succeeds appropriately.
+
+Statuses should remain semantically correct.
+
+Prototype semantics to preserve:
+
+fetch permanent failure:
+status=failed
+
+classification failure:
+status=fetched
+
+build failure:
+status=sorted
+
+This makes retries deterministic.
+
+===============================================================================
+PHASE 28 — RATE LIMITS / FREE-TIER GUARDRAILS
+===============================================================================
+
+Implement MVP safeguards.
+
+Per user:
+
+default daily capture limit:
+20
+
+Prevent accidental abuse.
+
+Consider:
+
+- maximum submitted URLs per Telegram message
+- maximum transcript storage size
+- maximum AI input budget
+- maximum build sources
+- provider timeouts
+- max job attempts
+- exponential retry backoff
+- duplicate URL prevention
+- playlist sync interval
+- conservative worker batch size
+
+Do not create a complicated billing/quota product.
+
+These are defensive free-tier limits only.
+
+Return clear messages when user limit is reached.
+
+===============================================================================
+PHASE 29 — SECURITY
+===============================================================================
+
+Audit:
+
+- RLS
+- server-only secrets
+- Telegram webhook verification
+- internal cron secret
+- service-role usage
+- XSS
+- Markdown rendering
+- untrusted URLs
+- open redirects
+- SQL privilege grants
+- SECURITY DEFINER functions
+- Telegram linking token expiry/reuse
+- user boundary enforcement
+
+SECURITY DEFINER functions must:
+
+- have explicit search_path
+- grant execute only to intended roles
+- never trust arbitrary user_id from authenticated clients
+
+Service-only functions must not be callable by anon/authenticated roles.
+
+Never log tokens.
+
+===============================================================================
+PHASE 30 — HEALTH / OBSERVABILITY
+===============================================================================
+
+Implement:
+
+/api/health
+
+Return only safe information.
+
+No secrets.
+
+Worker logs should be structured enough to identify:
+
+job id
+stage
+user id or truncated id when appropriate
+success/failure
+duration
+
+Do not log transcripts.
+
+Do not log full Telegram request token.
+
+===============================================================================
+PHASE 31 — TESTING
+===============================================================================
+
+Add meaningful tests.
+
+Unit tests at minimum:
+
+URL canonicalization
+YouTube ID parsing
+Telegram URL extraction
+Telegram message splitting
+topic normalization
+topic duplicate detection
+Gemini Zod schemas
+quiz schema validity
+retry stage determination
+
+Add database/RLS testing strategy.
+
+Where practical create SQL/pgTAP-style tests or documented SQL verification for:
+
+User A cannot read User B:
+- learning_items
+- topics
+- topic_artifacts
+- telegram_connections
+
+Do not make tests depend on paid API calls.
+
+Provider adapters should be mockable.
+
+External provider smoke tests must be opt-in only.
+
+Do NOT burn Supadata/Firecrawl/Gemini credits automatically during normal tests.
+
+===============================================================================
+PHASE 32 — CI
+===============================================================================
+
+Create GitHub Actions CI:
+
+on push / pull request
+
+Run:
+
+npm ci
+typecheck
+lint
+test
+build
+
+Do not require production secrets for unit CI.
+
+If build needs environment variables:
+use clearly fake CI-safe public placeholders only where appropriate.
+
+Never put real secrets in workflow YAML.
+
+===============================================================================
+PHASE 33 — DOCUMENTATION
+===============================================================================
+
+README.md should explain:
+
+What LearnIT is
+Architecture
+Local development
+Environment variables
+Supabase setup
+Telegram setup
+Background worker
+Deployment
+Testing
+
+Create:
+
+docs/ARCHITECTURE.md
+
+Include complete pipeline diagram.
+
+docs/DATABASE.md
+
+Document every table and status transition.
+
+docs/SECURITY.md
+
+Explain RLS and secret boundaries.
+
+docs/TELEGRAM.md
+
+Explain:
+- account linking
+- webhook
+- bot behavior
+- set webhook script
+- multi-user mapping
+
+docs/DEPLOYMENT.md
+
+Exact deployment order.
+
+docs/TESTING.md
+
+Manual end-to-end acceptance test.
+
+===============================================================================
+PHASE 34 — ENVIRONMENT EXAMPLES
+===============================================================================
+
+Update .env.example without secrets.
+
+Include every required variable.
+
+Example names:
+
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+NEXT_PUBLIC_APP_URL=
+
+SUPABASE_SERVICE_ROLE_KEY=
+
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
+
+SUPADATA_API_KEY=
+FIRECRAWL_API_KEY=
+
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_BOT_USERNAME=learnit_teampura_bot
+TELEGRAM_WEBHOOK_SECRET=
+
+INTERNAL_CRON_SECRET=
+
+Do not overwrite my actual .env.local values.
+
+Never print them.
+
+===============================================================================
+PHASE 35 — TELEGRAM WEBHOOK SCRIPTS
+===============================================================================
+
+Create safe scripts:
+
+set webhook
+delete webhook
+inspect webhook status
+
+They should read environment variables locally.
+
+Webhook target is the deployed Supabase telegram-webhook Edge Function.
+
+Set Telegram secret_token using TELEGRAM_WEBHOOK_SECRET.
+
+Never print bot token.
+
+Status script may report:
+
+URL
+pending update count
+last error
+
+but redact credentials.
+
+===============================================================================
+PHASE 36 — SUPABASE DEPLOYMENT FILES
+===============================================================================
+
+Prepare everything needed for:
+
+supabase link
+supabase db push
+supabase functions deploy
+
+Edge functions:
+
+telegram-webhook
+process-learning-jobs
+
+Create documentation for setting Edge Function secrets:
+
+GEMINI_API_KEY
+GEMINI_MODEL
+SUPADATA_API_KEY
+FIRECRAWL_API_KEY
+TELEGRAM_BOT_TOKEN
+TELEGRAM_WEBHOOK_SECRET
+INTERNAL_CRON_SECRET
+APP_BASE_URL
+
+Hosted Supabase automatically supplies its own standard Supabase URL/service
+credentials where supported.
+
+Do not duplicate secrets unnecessarily.
+
+===============================================================================
+PHASE 37 — VERCEL DEPLOYMENT
+===============================================================================
+
+Next.js on Vercel is the UI/auth layer.
+
+Do not make Vercel responsible for long-running learning generation.
+
+Document Vercel envs needed.
+
+Ideally browser/web app needs only:
+
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+NEXT_PUBLIC_APP_URL
+TELEGRAM_BOT_USERNAME
+
+Only add service-role to Vercel if implementation genuinely requires it.
+
+Prefer architecture where it is NOT required.
+
+===============================================================================
+PHASE 38 — ROOT ROUTE
+===============================================================================
+
+Root:
+
+unauthenticated -> login
+authenticated -> dashboard
+
+No generic Next.js starter page should remain.
+
+Remove unused starter assets/code.
+
+===============================================================================
+PHASE 39 — TYPES
+===============================================================================
+
+Create clear TypeScript domain types.
+
+If practical generate Supabase database types or establish command:
+
+supabase gen types typescript
+
+Do not manually duplicate database shape everywhere without a central type.
+
+===============================================================================
+PHASE 40 — BUILD QUALITY
+===============================================================================
+
+Before finishing:
+
+Run:
+
+npm run typecheck
+npm run lint
+npm test
+npm run build
+
+Add typecheck script if missing.
+
+Fix errors.
+
+Do not finish with known TypeScript errors.
+
+Do not suppress errors using `any` unless justified.
+
+Do not disable ESLint rules broadly to make build pass.
+
+===============================================================================
+PHASE 41 — DO NOT AUTOMATICALLY MUTATE REMOTE INFRASTRUCTURE
+===============================================================================
+
+Important safety boundary:
+
+Implement ALL source code, migrations, functions, tests and deployment files.
+
+You may initialize local Supabase files.
+
+Do NOT automatically:
+
+- run destructive database reset against remote
+- push migrations to an unknown project
+- deploy Edge Functions to an unknown project
+- change Telegram production webhook
+- deploy to Vercel
+- force push Git
+- commit secrets
+
+If Supabase CLI is already authenticated and linked:
+inspect the link and report it.
+
+Do not assume it is the correct project.
+
+Remote deployment is the final user-controlled step.
+
+Provide exact commands in the final report.
+
+===============================================================================
+PHASE 42 — ACCEPTANCE CRITERIA
+===============================================================================
+
+The implementation is not considered complete unless the architecture supports
+this:
+
+-------------------------------------------------------------------------------
+USER A
+-------------------------------------------------------------------------------
+
+1. signs up
+2. logs in
+3. connects Telegram through one-time deep link
+4. sends a YouTube URL to LearnIT bot
+5. Telegram webhook maps chat_id -> User A
+6. item inserted only for User A
+7. fetch job obtains transcript
+8. Gemini classifies topic
+9. Gemini generates Study Guide + Briefing + Quiz
+10. topic page displays all three
+11. digest goes to User A
+
+-------------------------------------------------------------------------------
+USER B
+-------------------------------------------------------------------------------
+
+1. creates separate account
+2. connects the SAME LearnIT Telegram bot
+3. gets separate chat mapping
+4. sends URL
+5. data belongs only to User B
+6. User A cannot see it
+
+-------------------------------------------------------------------------------
+SECURITY
+-------------------------------------------------------------------------------
+
+User A cannot read:
+
+User B learning_items
+User B topics
+User B artifacts
+User B telegram connection
+User B jobs
+User B digests
+
+even by directly calling Supabase APIs.
+
+-------------------------------------------------------------------------------
+CLOUD
+-------------------------------------------------------------------------------
+
+When production deployment is complete:
+
+Laptop OFF
+-> Telegram capture still works
+-> background jobs still run
+-> AI generation still runs
+-> digest still sends
+
+No Claude Code runtime.
+No NotebookLM runtime.
+No Baserow runtime.
+
+===============================================================================
+PHASE 43 — FINAL REPORT
+===============================================================================
+
+When implementation is finished, give me ONE final report containing:
+
+1. Architecture implemented
+2. Files created/modified
+3. Dependencies installed
+4. Database migrations created
+5. RLS policies created
+6. Edge Functions created
+7. Telegram flow implemented
+8. Supadata flow implemented
+9. Firecrawl flow implemented
+10. Gemini flow implemented
+11. Topic artifact generation implemented
+12. UI routes completed
+13. Tests added
+14. Test/lint/typecheck/build results
+15. Security review findings
+16. Environment variables still required
+17. Exact Supabase deployment commands
+18. Exact Supabase Vault/Cron setup
+19. Exact Edge Function secret setup
+20. Exact Telegram webhook command
+21. Exact Vercel deployment steps
+22. Manual two-user acceptance test
+23. Anything that remains blocked only by external authentication/deployment
+
+Also include current `git status`.
+
+Do not commit automatically.
+
+===============================================================================
+EXECUTION STYLE
+===============================================================================
+
+Important:
+
+Do not stop after each phase to ask me to continue.
+
+Do not repeatedly ask permission for ordinary file changes inside this repo.
+
+Work continuously.
+
+Use a TODO/checklist internally.
+
+Inspect your work after each major phase.
+
+Run tests frequently.
+
+If a particular library API has changed:
+inspect the actual installed package types/docs and adapt.
+
+Do not invent APIs.
+
+If something fails:
+diagnose it and fix it.
+
+If an external service cannot be called without consuming credits:
+mock/test locally instead of burning credits.
+
+If remote deployment authentication is missing:
+finish all local implementation anyway and report the exact deployment step.
+
+Do not replace implementation with pseudocode.
+
+Do not leave major TODO comments where working code is feasible.
+
+Build the actual LearnIT v2 application.

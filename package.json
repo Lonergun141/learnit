@@ -6,12 +6,28 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "env:check": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-env.mts",
+    "types:generate": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-types.mts",
+    "telegram:status": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/telegram-webhook.mts status",
+    "telegram:set": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/telegram-webhook.mts set",
+    "telegram:delete": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/telegram-webhook.mts delete"
   },
   "dependencies": {
+    "@google/genai": "2.20.0",
+    "@supabase/ssr": "0.12.5",
+    "@supabase/supabase-js": "2.114.0",
+    "@supadata/js": "1.4.0",
+    "lucide-react": "1.39.0",
     "next": "16.3.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -21,6 +37,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "4.1.11"
   }
 }
