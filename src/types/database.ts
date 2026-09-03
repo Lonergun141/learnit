@@ -361,6 +361,7 @@ export type Database = {
           daily_item_limit: number
           digest_enabled: boolean
           digest_hour: number
+          onboarded_at: string | null
           timezone: string
           updated_at: string
           user_id: string
@@ -373,6 +374,7 @@ export type Database = {
           daily_item_limit?: number
           digest_enabled?: boolean
           digest_hour?: number
+          onboarded_at?: string | null
           timezone?: string
           updated_at?: string
           user_id: string
@@ -385,6 +387,7 @@ export type Database = {
           daily_item_limit?: number
           digest_enabled?: boolean
           digest_hour?: number
+          onboarded_at?: string | null
           timezone?: string
           updated_at?: string
           user_id?: string
