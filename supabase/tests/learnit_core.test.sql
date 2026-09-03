@@ -1,6 +1,6 @@
 begin;
 
-select plan(81);
+select plan(82);
 
 select ok(
   exists (
@@ -164,6 +164,15 @@ select is(
   (select count(*) from public.user_settings),
   2::bigint,
   'auth user creation bootstraps settings'
+);
+
+select is(
+  (
+    select distinct settings.timezone
+    from public.user_settings as settings
+  ),
+  'Asia/Manila',
+  'a bootstrapped account defaults to the Asia/Manila timezone'
 );
 
 select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
@@ -783,8 +792,9 @@ select is(
   'a failed digest is not re-enqueued during the same local day'
 );
 
+-- Away from the account default, so the mirror has something to carry.
 update public.user_settings
-set timezone = 'Asia/Manila'
+set timezone = 'Europe/London'
 where user_id = '11111111-1111-4111-8111-111111111111';
 
 select is(
@@ -793,7 +803,7 @@ select is(
     from public.profiles as profile
     where profile.id = '11111111-1111-4111-8111-111111111111'
   ),
-  'Asia/Manila',
+  'Europe/London',
   'changing the settings timezone mirrors onto the profile in the same write'
 );
 
@@ -807,7 +817,7 @@ select is(
     from public.profiles as profile
     where profile.id = '11111111-1111-4111-8111-111111111111'
   ),
-  'Asia/Manila',
+  'Europe/London',
   'an unrelated settings change leaves the mirrored timezone alone'
 );
 
