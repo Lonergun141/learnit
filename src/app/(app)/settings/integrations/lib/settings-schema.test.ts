@@ -7,6 +7,7 @@ describe("integration preferences", () => {
     expect(
       preferencesSchema.parse({
         digestEnabled: "on",
+        readyRepliesEnabled: "on",
         digestHour: "7",
         timezone: "Asia/Shanghai",
         youtubeCaptureEnabled: "on",
@@ -15,12 +16,38 @@ describe("integration preferences", () => {
       }),
     ).toEqual({
       digestEnabled: true,
+      readyRepliesEnabled: true,
       digestHour: 7,
       timezone: "Asia/Shanghai",
       youtubeCaptureEnabled: true,
       youtubePlaylistId: "PL123456789",
       dailyItemLimit: 25,
     });
+  });
+
+  /**
+   * A browser omits an unchecked box entirely, so the two toggles have to read
+   * as false when absent rather than carrying their previous value forward.
+   */
+  it("reads an omitted toggle as switched off", () => {
+    expect(
+      preferencesSchema.parse({
+        digestHour: "6",
+        timezone: "UTC",
+        dailyItemLimit: "20",
+      }),
+    ).toMatchObject({ digestEnabled: false, readyRepliesEnabled: false });
+  });
+
+  it("keeps the two delivery toggles independent", () => {
+    expect(
+      preferencesSchema.parse({
+        readyRepliesEnabled: "on",
+        digestHour: "6",
+        timezone: "UTC",
+        dailyItemLimit: "20",
+      }),
+    ).toMatchObject({ digestEnabled: false, readyRepliesEnabled: true });
   });
 
   it("rejects invalid IANA timezones", () => {

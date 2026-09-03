@@ -16,7 +16,11 @@ import {
 import { sendTelegramMessage } from "../_shared/telegram.ts";
 import { createLearningJobDatabase, mapClaimedJob } from "./database.ts";
 import { handleWorkerRequest } from "./handler.ts";
-import { processLearningJob } from "./processor.ts";
+import {
+  processLearningJob,
+  sendTelegramNotices,
+  type ProcessorDependencies,
+} from "./processor.ts";
 
 const REQUIRED_ENVIRONMENT = [
   "SUPABASE_URL",
@@ -44,6 +48,45 @@ const processLearningJobs = {
       const supadata = createSupadataGateway(environment.SUPADATA_API_KEY);
       const workerId = `edge-${crypto.randomUUID()}`;
 
+      // Built once rather than per job: the terminal-failure reply needs the
+      // same database and Telegram access that processing does.
+      const processorDependencies: ProcessorDependencies = {
+        database,
+        model: environment.GEMINI_MODEL,
+        appBaseUrl: environment.APP_BASE_URL,
+        providers: {
+          fetchArticle: (url) =>
+            fetchArticleWithFirecrawl({
+              apiKey: environment.FIRECRAWL_API_KEY,
+              url,
+            }),
+          fetchYouTube: (url, pendingJobId) =>
+            fetchYouTubeWithSupadata({ client: supadata, url, pendingJobId }),
+          classifyTopic: (input) =>
+            classifyTopic({
+              client: gemini,
+              model: environment.GEMINI_MODEL,
+              ...input,
+            }),
+          generateTopicMaterials: (input) =>
+            generateTopicMaterials({
+              client: gemini,
+              model: environment.GEMINI_MODEL,
+              ...input,
+            }),
+          fetchPlaylistVideoIds: (playlistId) =>
+            fetchPlaylistVideoIds(supadata, playlistId),
+          sendTelegram: (chatId, message, options) =>
+            sendTelegramMessage(
+              environment.TELEGRAM_BOT_TOKEN,
+              chatId,
+              message,
+              fetch,
+              options,
+            ),
+        },
+      };
+
       return await handleWorkerRequest(request, {
         internalSecret: environment.INTERNAL_CRON_SECRET,
         workerId,
@@ -62,36 +105,7 @@ const processLearningJobs = {
         async processJob(job, id) {
           const startedAt = performance.now();
           try {
-            await processLearningJob(job, id, {
-              database,
-              model: environment.GEMINI_MODEL,
-              appBaseUrl: environment.APP_BASE_URL,
-              providers: {
-                fetchArticle: (url) =>
-                  fetchArticleWithFirecrawl({
-                    apiKey: environment.FIRECRAWL_API_KEY,
-                    url,
-                  }),
-                fetchYouTube: (url, pendingJobId) =>
-                  fetchYouTubeWithSupadata({ client: supadata, url, pendingJobId }),
-                classifyTopic: (input) =>
-                  classifyTopic({
-                    client: gemini,
-                    model: environment.GEMINI_MODEL,
-                    ...input,
-                  }),
-                generateTopicMaterials: (input) =>
-                  generateTopicMaterials({
-                    client: gemini,
-                    model: environment.GEMINI_MODEL,
-                    ...input,
-                  }),
-                fetchPlaylistVideoIds: (playlistId) =>
-                  fetchPlaylistVideoIds(supadata, playlistId),
-                sendTelegram: (chatId, message) =>
-                  sendTelegramMessage(environment.TELEGRAM_BOT_TOKEN, chatId, message),
-              },
-            });
+            await processLearningJob(job, id, processorDependencies);
             console.info(JSON.stringify({
               event: "learning_job_succeeded",
               jobId: job.id,
@@ -125,6 +139,15 @@ const processLearningJobs = {
             throw new Error("Unable to persist job failure");
           }
           return data;
+        },
+        async notifyTerminalFailure(job) {
+          if (!job.itemId) return;
+          await sendTelegramNotices(
+            [job.itemId],
+            job.userId,
+            "failed",
+            processorDependencies,
+          );
         },
       });
     } catch {

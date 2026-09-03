@@ -50,6 +50,11 @@ function database(overrides: Partial<LearningJobDatabase> = {}): LearningJobData
       failedCount: 0,
     }),
     completeDigestJob: vi.fn().mockResolvedValue(undefined),
+    getTelegramNoticeContext: vi.fn().mockResolvedValue({
+      enabled: true,
+      chatId: 123,
+      items: [],
+    }),
     ...overrides,
   };
 }
@@ -187,6 +192,89 @@ describe("processLearningJob", () => {
         materials,
       }),
     );
+  });
+
+  it("replies silently under the message a built item arrived in", async () => {
+    const db = database({
+      getTopicSources: vi.fn().mockResolvedValue([
+        {
+          id: "item-1",
+          title: "Source",
+          transcript: "source content",
+          createdAt: "2026-09-02T10:00:00Z",
+        },
+      ]),
+      getTelegramNoticeContext: vi.fn().mockResolvedValue({
+        enabled: true,
+        chatId: 123,
+        items: [
+          {
+            itemId: "item-1",
+            title: "Source",
+            topicId: "topic-1",
+            topicName: "Databases",
+            telegramMessageId: 77,
+          },
+        ],
+      }),
+    });
+    const services = providers({
+      generateTopicMaterials: vi.fn().mockResolvedValue({
+        studyGuide: { title: "Guide", markdown: "Complete guide content for the test." },
+        briefing: { title: "Brief", markdown: "Complete brief content for the test." },
+        quiz: { title: "Quiz", questions: [] },
+      }),
+    });
+
+    await processLearningJob(job("build_topic"), "worker-1", {
+      database: db,
+      providers: services,
+      model: "gemini-test",
+      appBaseUrl: "https://learnit.example",
+    });
+
+    expect(db.getTelegramNoticeContext).toHaveBeenCalledWith("user-a", ["item-1"]);
+    expect(services.sendTelegram).toHaveBeenCalledWith(
+      123,
+      expect.stringContaining("Ready to study: Source"),
+      { replyToMessageId: 77, silent: true },
+    );
+  });
+
+  /**
+   * The build is already recorded by the time the reply is attempted, so a
+   * Telegram outage must not turn a completed build into a retried one.
+   */
+  it("keeps a completed build when the reply cannot be delivered", async () => {
+    const db = database({
+      getTopicSources: vi.fn().mockResolvedValue([
+        {
+          id: "item-1",
+          title: "Source",
+          transcript: "source content",
+          createdAt: "2026-09-02T10:00:00Z",
+        },
+      ]),
+      getTelegramNoticeContext: vi.fn().mockRejectedValue(new Error("Telegram unreachable")),
+    });
+    const services = providers({
+      generateTopicMaterials: vi.fn().mockResolvedValue({
+        studyGuide: { title: "Guide", markdown: "Complete guide content for the test." },
+        briefing: { title: "Brief", markdown: "Complete brief content for the test." },
+        quiz: { title: "Quiz", questions: [] },
+      }),
+    });
+
+    await expect(
+      processLearningJob(job("build_topic"), "worker-1", {
+        database: db,
+        providers: services,
+        model: "gemini-test",
+        appBaseUrl: "https://learnit.example",
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(db.completeTopicBuild).toHaveBeenCalledTimes(1);
   });
 
   it("captures playlist videos independently and then completes maintenance", async () => {

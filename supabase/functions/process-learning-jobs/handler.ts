@@ -35,6 +35,12 @@ export interface WorkerDependencies {
   claimJobs(limit: number, workerId: string): Promise<LearningJob[]>;
   processJob(job: LearningJob, workerId: string): Promise<void>;
   failJob(input: FailJobInput): Promise<"queued" | "failed" | "dead">;
+  /**
+   * Called once a job has failed for good, so the person who sent the link is
+   * told rather than left waiting. Never called for a retryable failure, which
+   * is still on its way to succeeding.
+   */
+  notifyTerminalFailure?(job: LearningJob): Promise<void>;
 }
 
 function safeErrorMessage(error: unknown): string {
@@ -84,13 +90,14 @@ export async function handleWorkerRequest(
         payloadPatch.supadataTranscriptJobId = error.providerJobId;
       }
       try {
-        await dependencies.failJob({
+        const outcome = await dependencies.failJob({
           jobId: job.id,
           workerId: dependencies.workerId,
           error: safeErrorMessage(error),
           retryable: error instanceof ProviderError ? error.retryable : true,
           payloadPatch,
         });
+        if (outcome !== "queued") await dependencies.notifyTerminalFailure?.(job);
       } catch {
         // A later stale-lock pass can recover a job if failure persistence itself fails.
       }

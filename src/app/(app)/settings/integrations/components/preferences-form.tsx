@@ -12,6 +12,7 @@ import type { PreferencesActionState } from "../lib/settings-schema";
 interface PreferencesFormProps {
   settings: {
     digest_enabled: boolean;
+    ready_replies_enabled: boolean;
     digest_hour: number;
     timezone: string;
     youtube_playlist_id: string | null;
@@ -55,7 +56,20 @@ export function PreferencesForm({ settings }: PreferencesFormProps) {
             Daily digest
           </span>
           <span className="mt-2 block text-xs leading-5 text-ink-faint">
-            Sent at the selected local hour.
+            One message at the selected local hour, listing everything built the day before.
+          </span>
+        </span>
+      </label>
+
+      <label className="flex cursor-pointer items-start gap-4 border-l-2 border-line py-1 pl-5 transition-colors hover:border-signal">
+        <input className={toggleClassName} type="checkbox" name="readyRepliesEnabled" defaultChecked={settings.ready_replies_enabled} />
+        <span>
+          <span className="block font-display text-[0.8rem] font-semibold uppercase tracking-[0.07em] text-ink-soft">
+            Ready-to-study replies
+          </span>
+          <span className="mt-2 block text-xs leading-5 text-ink-faint">
+            The bot replies under a link you sent once its materials are built, or if it could
+            not be processed. Delivered silently, so your phone stays quiet.
           </span>
         </span>
       </label>

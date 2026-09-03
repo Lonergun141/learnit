@@ -15,6 +15,7 @@ interface TelegramUser {
 interface TelegramUpdate {
   update_id?: number;
   message?: {
+    message_id?: number;
     chat?: { id?: number };
     from?: TelegramUser;
     text?: string;
@@ -37,6 +38,11 @@ interface CreateItemInput {
   url: string;
   canonicalUrl: string;
   note: string | null;
+  /**
+   * The message this link arrived in, kept so the worker can reply underneath it
+   * once the materials are built. Null when Telegram omits it.
+   */
+  telegramMessageId: number | null;
 }
 
 export interface TelegramWebhookDependencies {
@@ -123,6 +129,10 @@ export async function handleTelegramWebhook(
     return jsonResponse({ ok: true });
   }
 
+  const telegramMessageId =
+    typeof message.message_id === "number" && Number.isSafeInteger(message.message_id)
+      ? message.message_id
+      : null;
   const parsed = parseTelegramMessage(text, message.entities);
   if (parsed.urls.length === 0) {
     await dependencies.sendMessage(
@@ -153,6 +163,7 @@ export async function handleTelegramWebhook(
         url,
         canonicalUrl,
         note: parsed.note,
+        telegramMessageId,
       });
       if (result.wasCreated) added += 1;
       else duplicates += 1;

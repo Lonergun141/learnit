@@ -204,7 +204,7 @@ export async function getIntegrationSettings() {
     supabase
       .from("user_settings")
       .select(
-        "digest_enabled, digest_hour, timezone, youtube_playlist_id, youtube_capture_enabled, youtube_last_polled_at, daily_item_limit",
+        "digest_enabled, ready_replies_enabled, digest_hour, timezone, youtube_playlist_id, youtube_capture_enabled, youtube_last_polled_at, daily_item_limit",
       )
       .eq("user_id", user.id)
       .single(),
