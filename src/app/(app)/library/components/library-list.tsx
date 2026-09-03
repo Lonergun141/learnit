@@ -3,17 +3,20 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { determineItemPhase, isPhaseInFlight } from "@/lib/learning/statuses";
 import { formatDate, hostnameLabel } from "@/lib/utils/format";
 import type { Database } from "@/types/database";
 
 type Status = Database["public"]["Enums"]["learning_status"];
 type Source = Database["public"]["Enums"]["learning_source"];
+type Stage = Database["public"]["Enums"]["job_stage"];
 
 interface LibraryItem {
   id: string;
   title: string | null;
   canonical_url: string;
   status: Status;
+  failure_stage: Stage | null;
   source: Source;
   content_type: "youtube" | "article";
   added_at: string;
@@ -63,7 +66,7 @@ export function LibraryList({ items }: LibraryListProps) {
         {items.map((item, position) => (
           <li className="border-b border-line last:border-b-0" key={item.id}>
             <Link
-              className={`group grid items-center gap-x-6 gap-y-2.5 py-4 transition-colors duration-200 hover:bg-surface-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-signal ${row} ${inset}`}
+              className={`group relative grid items-center gap-x-6 gap-y-2.5 py-4 transition-colors duration-200 hover:bg-surface-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-signal ${row} ${inset}`}
               href={`/library/${item.id}`}
             >
               <span className="mono-label self-start pt-0.5 transition-colors group-hover:text-signal">
@@ -88,11 +91,16 @@ export function LibraryList({ items }: LibraryListProps) {
                 {sourceLabel(item.source)}
               </span>
               <span className="col-start-2 lg:col-start-auto">
-                <StatusBadge status={item.status} />
+                <StatusBadge status={item.status} failureStage={item.failure_stage} />
               </span>
               <span className="col-start-2 font-mono text-[0.6875rem] tabular-nums text-ink-faint lg:col-start-auto">
                 {formatDate(item.added_at)}
               </span>
+              {isPhaseInFlight(
+                determineItemPhase({ status: item.status, failureStage: item.failure_stage }),
+              ) ? (
+                <span className="transit-rule" aria-hidden="true" />
+              ) : null}
             </Link>
           </li>
         ))}

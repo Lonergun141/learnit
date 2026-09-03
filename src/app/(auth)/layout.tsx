@@ -3,8 +3,6 @@ import type { ReactNode } from "react";
 import { Brand } from "@/components/layout/brand";
 import { Blueprint } from "@/components/ui/blueprint";
 import { CropMarks } from "@/components/ui/crop-marks";
-import { GridRules } from "@/components/ui/grid-rules";
-import { TickRule } from "@/components/ui/tick-rule";
 
 const stages = ["Capture", "Sort", "Study"];
 
@@ -12,8 +10,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main className="grid min-h-screen lg:grid-cols-[minmax(26rem,1fr)_minmax(28rem,0.85fr)]">
       <section className="relative hidden overflow-hidden border-r border-line lg:flex lg:flex-col">
-        <GridRules columns={4} className="opacity-70" />
-        <div className="grid-field absolute inset-0" aria-hidden="true" />
+        <div className="grid-field absolute inset-0 opacity-20" aria-hidden="true" />
         <div
           className="absolute inset-0 bg-[radial-gradient(40rem_30rem_at_25%_25%,color-mix(in_oklab,var(--signal)_11%,transparent),transparent_65%)]"
           aria-hidden="true"
@@ -22,7 +19,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           variant="node"
           className="absolute -left-28 bottom-[-6rem] h-[38rem] w-72 text-signal/20"
         />
-        <Blueprint variant="star" className="absolute right-14 top-24 h-28 w-28 text-signal/40" />
         <CropMarks className="inset-8" />
 
         <div className="relative px-12 pt-12 xl:px-16">
@@ -42,7 +38,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </div>
 
         <div className="relative">
-          <TickRule />
           <ol className="grid grid-cols-3 border-t border-line">
             {stages.map((stage, index) => (
               <li className="border-r border-line px-6 py-7 last:border-r-0 xl:px-8" key={stage}>

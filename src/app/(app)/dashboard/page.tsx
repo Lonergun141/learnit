@@ -1,150 +1,86 @@
+import { BookCheck, Layers3, LibraryBig, Route } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { Blueprint } from "@/components/ui/blueprint";
-import { HeroBand } from "@/components/ui/hero-band";
-import { SheetSection } from "@/components/ui/sheet-section";
+import { LiveRefresh } from "@/components/ui/live-refresh";
 import { getDashboardData, getIntegrationSettings } from "@/lib/learning/queries";
-import { formatDateTime } from "@/lib/utils/format";
+import { hasWorkInFlight } from "@/lib/learning/statuses";
 
-import { PlaylistSync } from "../settings/integrations/components/playlist-sync";
-import { MetricStrip } from "./components/metric-strip";
-import { RecentItems } from "./components/recent-items";
-import { SaveLinkForm } from "./components/save-link-form";
+import { AttentionTile } from "./components/attention-tile";
+import { CaptureTile } from "./components/capture-tile";
+import { FeedTile } from "./components/feed-tile";
+import { IdentityTile } from "./components/identity-tile";
+import { PlaylistTile } from "./components/playlist-tile";
+import { StatTile } from "./components/stat-tile";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const [data, integrations] = await Promise.all([getDashboardData(), getIntegrationSettings()]);
   const { settings } = integrations;
-  const playlistReady = Boolean(settings.youtube_capture_enabled && settings.youtube_playlist_id);
+
+  // Only the intake list can hold moving work; completed rows are settled by
+  // definition. Polling follows what is on screen, so a stalled item elsewhere
+  // in the library never keeps the timer alive.
+  const intake = data.recentAdded.map((item) => ({
+    ...item,
+    failureStage: item.failure_stage,
+    date: item.added_at,
+    topicName: item.topics?.name,
+  }));
+
+  const completed = data.recentCompleted.map((item) => ({
+    ...item,
+    failureStage: item.failure_stage,
+    date: item.built_at,
+    topicName: item.topics?.name,
+  }));
 
   return (
-    <div>
-      <HeroBand
-        eyebrow="Overview"
-        figure="orbit"
-        title={
-          <>
-            Learning <span className="accent-italic text-signal">network</span>
-          </>
-        }
-        meta={
-          <div className="mono-label flex gap-5 sm:block">
-            <span className="block text-ink-soft">
-              {String(data.counts.total).padStart(2, "0")} sources
-            </span>
-            <span className="block sm:mt-2">
-              {String(data.counts.topics).padStart(2, "0")} topics
-            </span>
-          </div>
-        }
-      />
+    <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <LiveRefresh active={hasWorkInFlight(intake)} />
 
-      <MetricStrip counts={data.counts} />
+      {/*
+       * Twelve columns on desktop, two on small screens so the counters stay
+       * paired instead of becoming a stack of full-width bars. Tiles are placed
+       * by span alone — the capture cell's row-span is what opens the notch the
+       * playlist tile settles into.
+       */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-12">
+        {data.counts.failed > 0 ? (
+          <AttentionTile count={data.counts.failed} className="col-span-2 lg:col-span-12" />
+        ) : null}
 
-      <SheetSection index="01" label="Capture" flush>
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
-          <div className="border-b border-line px-6 py-8 sm:px-10 sm:py-10 lg:border-b-0 lg:border-r lg:px-14">
-            <div className="max-w-xl">
-              <SaveLinkForm />
-            </div>
-          </div>
+        <IdentityTile className="col-span-2 lg:col-span-6" />
+        <StatTile label="Library" value={data.counts.total} icon={LibraryBig} className="lg:col-span-3" />
+        <StatTile label="Topics" value={data.counts.topics} icon={Layers3} className="lg:col-span-3" />
 
-          <div className="relative overflow-hidden px-6 py-8 sm:px-10 sm:py-10 lg:px-10">
-            <Blueprint
-              variant="orbit"
-              className="pointer-events-none absolute -right-20 bottom-0 h-40 w-72 text-signal/[0.08]"
-            />
-            <div className="relative">
-              <div className="flex items-center justify-between gap-4">
-                <p className="mono-label">Playlist capture</p>
-                <span
-                  className={`mono-label ${playlistReady ? "text-signal" : "text-ink-faint"}`}
-                >
-                  {playlistReady ? "Armed" : "Off"}
-                </span>
-              </div>
+        <CaptureTile className="col-span-2 lg:col-span-6 lg:row-span-2" />
+        <StatTile label="In transit" value={data.counts.processing} icon={Route} className="lg:col-span-3" />
+        <StatTile label="Ready" value={data.counts.completed} icon={BookCheck} className="lg:col-span-3" />
 
-              {playlistReady ? (
-                <>
-                  <p className="mt-5 break-all font-mono text-[0.8125rem] text-ink-soft">
-                    {settings.youtube_playlist_id}
-                  </p>
-                  <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4">
-                    <div>
-                      <dt className="mono-label">Daily limit</dt>
-                      <dd className="mt-2 font-mono text-[0.75rem] tabular-nums text-ink-muted">
-                        {settings.daily_item_limit}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="mono-label">Last poll</dt>
-                      <dd className="mt-2 font-mono text-[0.75rem] text-ink-muted">
-                        {formatDateTime(settings.youtube_last_polled_at)}
-                      </dd>
-                    </div>
-                  </dl>
-                  <PlaylistSync />
-                </>
-              ) : (
-                <>
-                  <p className="mt-5 max-w-xs text-sm leading-7 text-ink-muted">
-                    Point LearnIT at a YouTube playlist and it polls hourly.
-                  </p>
-                  <Link className="bracket-link mt-6" href="/settings/integrations">
-                    Configure
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </SheetSection>
+        <PlaylistTile
+          className="col-span-2 lg:col-span-6"
+          enabled={settings.youtube_capture_enabled}
+          playlistId={settings.youtube_playlist_id}
+          dailyLimit={settings.daily_item_limit}
+          lastPolledAt={settings.youtube_last_polled_at}
+        />
 
-      <SheetSection
-        index="02"
-        label="Completed"
-        action={
-          <Link className="bracket-link" href="/library">
-            All
-          </Link>
-        }
-        flush
-      >
-        <RecentItems
-          items={data.recentCompleted.map((item) => ({
-            ...item,
-            status: item.status,
-            date: item.built_at,
-            topicName: item.topics?.name,
-          }))}
+        <FeedTile
+          className="col-span-2 lg:col-span-6"
+          label="In transit"
+          items={intake}
+          emptyTitle="Nothing in transit"
+          emptyDescription="Save a link to begin."
+        />
+        <FeedTile
+          className="col-span-2 lg:col-span-6"
+          label="Ready to study"
+          items={completed}
           emptyTitle="Nothing ready yet"
           emptyDescription="Finished materials land here."
         />
-      </SheetSection>
-
-      <SheetSection
-        index="03"
-        label="Intake"
-        action={
-          <Link className="bracket-link" href="/library">
-            All
-          </Link>
-        }
-        flush
-      >
-        <RecentItems
-          items={data.recentAdded.map((item) => ({
-            ...item,
-            status: item.status,
-            date: item.added_at,
-            topicName: item.topics?.name,
-          }))}
-          emptyTitle="Intake is empty"
-          emptyDescription="Save a link to begin."
-        />
-      </SheetSection>
+      </div>
     </div>
   );
 }

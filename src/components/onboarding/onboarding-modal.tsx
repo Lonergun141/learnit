@@ -7,8 +7,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Blueprint } from "@/components/ui/blueprint";
 import { CropMarks } from "@/components/ui/crop-marks";
-import { GridRules } from "@/components/ui/grid-rules";
-import { TickRule } from "@/components/ui/tick-rule";
 import { Button } from "@/components/ui/button";
 import {
   isLastStep,
@@ -219,8 +217,7 @@ export function OnboardingModal({ open, onDismiss }: OnboardingModalProps) {
           ref={stageRef}
         >
           <div className="relative hidden overflow-hidden border-r border-line lg:block">
-            <GridRules columns={3} className="opacity-50" />
-            <div className="grid-field absolute inset-0 opacity-40" aria-hidden="true" />
+            <div className="grid-field absolute inset-0 opacity-20" aria-hidden="true" />
             <CropMarks className="inset-6" />
             <div
               className="absolute inset-0 grid place-items-center p-10"
@@ -278,7 +275,6 @@ export function OnboardingModal({ open, onDismiss }: OnboardingModalProps) {
           </div>
         </div>
 
-        <TickRule />
 
         <div className="flex items-center justify-between gap-6 border-t border-line px-6 py-4 sm:px-8">
           <div className="flex min-w-0 items-center gap-4">

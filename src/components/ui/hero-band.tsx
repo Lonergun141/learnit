@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 
 import { Blueprint, type BlueprintVariant } from "@/components/ui/blueprint";
-import { GridRules } from "@/components/ui/grid-rules";
-import { TickRule } from "@/components/ui/tick-rule";
 import { cn } from "@/lib/utils/cn";
 
 interface HeroBandProps {
@@ -23,8 +21,12 @@ interface HeroBandProps {
 export function HeroBand({ eyebrow, title, meta, actions, figure, className }: HeroBandProps) {
   return (
     <section className={cn("relative overflow-hidden border-b border-line", className)}>
-      <GridRules className="opacity-50" />
-      <div className="grid-field absolute inset-0 opacity-40" aria-hidden="true" />
+      {/*
+       * One texture, not three. Column rules and the crosshatch both drew a
+       * grid, and a tick ruler under every title made a third. The crosshatch
+       * alone carries the drafting-table read without competing with the type.
+       */}
+      <div className="grid-field absolute inset-0 opacity-20" aria-hidden="true" />
       {figure ? (
         <Blueprint
           variant={figure}
@@ -43,8 +45,6 @@ export function HeroBand({ eyebrow, title, meta, actions, figure, className }: H
         </div>
         {meta ? <div className="shrink-0 sm:text-right">{meta}</div> : null}
       </div>
-
-      <TickRule className="relative" />
     </section>
   );
 }

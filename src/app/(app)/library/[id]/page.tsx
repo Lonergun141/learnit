@@ -5,12 +5,18 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { buttonClassName } from "@/components/ui/button";
+import { LiveRefresh } from "@/components/ui/live-refresh";
 import { Readout } from "@/components/ui/readout";
 import { SheetSection } from "@/components/ui/sheet-section";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { HeroBand } from "@/components/ui/hero-band";
 import { getLearningItem } from "@/lib/learning/queries";
-import { determineRetryStage } from "@/lib/learning/statuses";
+import {
+  determineItemPhase,
+  determineRetryStage,
+  isPhaseInFlight,
+  phaseCopy,
+} from "@/lib/learning/statuses";
 import { cn } from "@/lib/utils/cn";
 import { formatDateTime } from "@/lib/utils/format";
 
@@ -37,8 +43,16 @@ export default async function LibraryItemPage({ params }: PageProps<"/library/[i
     { label: "Built", at: item.built_at },
   ];
 
+  const phase = determineItemPhase({ status: item.status, failureStage: item.failure_stage });
+  const inFlight = isPhaseInFlight(phase);
+  // Stations fill strictly in order, so the first one still missing a timestamp
+  // is the one the worker is on right now.
+  const activeStation = inFlight ? stations.findIndex((station) => !station.at) : -1;
+
   return (
     <div>
+      <LiveRefresh active={inFlight} />
+
       <div className="border-b border-line px-6 py-4 sm:px-10 lg:px-14">
         <Link className="bracket-link" href="/library">
           <ArrowLeft size={13} /> Library
@@ -48,7 +62,7 @@ export default async function LibraryItemPage({ params }: PageProps<"/library/[i
       <HeroBand
         eyebrow="Source"
         title={item.title ?? "Untitled source"}
-        meta={<StatusBadge status={item.status} />}
+        meta={<StatusBadge status={item.status} failureStage={item.failure_stage} />}
         actions={
           <div className="flex flex-wrap items-center gap-6">
             <a
@@ -104,26 +118,38 @@ export default async function LibraryItemPage({ params }: PageProps<"/library/[i
             className="absolute left-1 right-1 top-[0.3125rem] hidden h-px bg-line sm:block"
             aria-hidden="true"
           />
-          {stations.map((station) => (
-            <li className="relative" key={station.label}>
-              <span
-                className={cn(
-                  "block size-2.5 rounded-full border",
-                  station.at ? "border-signal bg-signal" : "border-line-strong bg-background",
-                )}
-                aria-hidden="true"
-              />
-              <p className="mono-label mt-6">{station.label}</p>
-              <p
-                className={cn(
-                  "mt-3 font-mono text-[0.75rem] leading-5",
-                  station.at ? "text-ink-soft" : "text-ink-faint",
-                )}
-              >
-                {formatDateTime(station.at)}
-              </p>
-            </li>
-          ))}
+          {stations.map((station, index) => {
+            const active = index === activeStation;
+
+            return (
+              <li className="relative" key={station.label}>
+                <span className="relative block size-2.5" aria-hidden="true">
+                  {active ? (
+                    <span className="absolute inset-0 animate-ping rounded-full bg-info opacity-75 motion-reduce:hidden" />
+                  ) : null}
+                  <span
+                    className={cn(
+                      "absolute inset-0 rounded-full border",
+                      station.at && "border-signal bg-signal",
+                      active && "border-info bg-info",
+                      !station.at && !active && "border-line-strong bg-background",
+                    )}
+                  />
+                </span>
+                <p className="mono-label mt-6">{station.label}</p>
+                <p
+                  className={cn(
+                    "mt-3 font-mono text-[0.75rem] leading-5",
+                    station.at && "text-ink-soft",
+                    active && "text-info",
+                    !station.at && !active && "text-ink-faint",
+                  )}
+                >
+                  {active ? phaseCopy[phase].badge : formatDateTime(station.at)}
+                </p>
+              </li>
+            );
+          })}
         </ol>
       </SheetSection>
 
