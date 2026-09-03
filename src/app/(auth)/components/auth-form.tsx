@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { InputField } from "@/components/ui/field";
+import { InputField, PasswordField } from "@/components/ui/field";
 
 import { loginAction, signupAction } from "../actions";
 import type { AuthActionState } from "../lib/auth-schema";
@@ -47,15 +47,23 @@ export function AuthForm({ mode }: AuthFormProps) {
         error={state.fieldErrors?.email?.[0]}
         required
       />
-      <InputField
+      <PasswordField
         label="Password"
         hint={isSignup ? "12+ characters" : undefined}
         name="password"
-        type="password"
         autoComplete={isSignup ? "new-password" : "current-password"}
         error={state.fieldErrors?.password?.[0]}
         required
       />
+      {isSignup ? (
+        <PasswordField
+          label="Confirm password"
+          name="confirmPassword"
+          autoComplete="new-password"
+          error={state.fieldErrors?.confirmPassword?.[0]}
+          required
+        />
+      ) : null}
       {state.message ? (
         <p
           className="rounded-lg border border-line bg-surface-muted/60 px-4 py-3 text-sm leading-6 text-ink-muted"

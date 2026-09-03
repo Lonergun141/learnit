@@ -27,8 +27,23 @@ describe("authentication form contracts", () => {
         displayName: "A",
         email: "learner@example.com",
         password: "password",
+        confirmPassword: "password",
       }).success,
     ).toBe(false);
+  });
+
+  it("rejects a signup whose confirmation does not match the password", () => {
+    const result = signupSchema.safeParse({
+      displayName: "Ada Learner",
+      email: "ada@example.com",
+      password: "Study!With7Signals",
+      confirmPassword: "Study!With7Signal",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.flatten().fieldErrors.confirmPassword).toEqual([
+      "Both passwords must match",
+    ]);
   });
 
   it("accepts a complete signup", () => {
@@ -37,11 +52,13 @@ describe("authentication form contracts", () => {
         displayName: "  Ada Learner  ",
         email: "ADA@EXAMPLE.COM",
         password: "Study!With7Signals",
+        confirmPassword: "Study!With7Signals",
       }),
     ).toEqual({
       displayName: "Ada Learner",
       email: "ada@example.com",
       password: "Study!With7Signals",
+      confirmPassword: "Study!With7Signals",
     });
   });
 
@@ -60,6 +77,7 @@ describe("authentication form contracts", () => {
   it("never echoes the password back to the browser", () => {
     const formData = new FormData();
     formData.set("password", "Study!With7Signals");
+    formData.set("confirmPassword", "Study!With7Signals");
 
     expect(JSON.stringify(retainedAuthValues(formData))).not.toContain("Study!With7Signals");
   });
