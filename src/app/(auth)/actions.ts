@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { resolveAppUrl } from "@/lib/env/app-url";
 import { createClient } from "@/lib/supabase/server";
 
 import {
@@ -43,7 +44,7 @@ export async function signupAction(
   if (!parsed.success) return invalidState(parsed.error, formData);
 
   const requestHeaders = await headers();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? requestHeaders.get("origin") ?? "http://localhost:3000";
+  const appUrl = resolveAppUrl({ requestOrigin: requestHeaders.get("origin") });
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
