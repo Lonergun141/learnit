@@ -25,46 +25,64 @@ const artifactLabels: Record<ArtifactKind, string> = {
   quiz: "Quiz",
 };
 
+/**
+ * A plate of ruled cells. Each topic gets a numbered field with the name set
+ * large at the foot of the cell — an index plate, not a deck of cards.
+ */
 export function TopicList({ topics }: TopicListProps) {
   if (topics.length === 0) {
     return (
-      <EmptyState
-        icon={<BookOpen size={20} />}
-        title="Your topic map is waiting"
-        description="Save a link first. LearnIT will classify it and create the first topic route for you."
-      />
+      <div className="px-6 py-10 sm:px-10 lg:px-14">
+        <EmptyState
+          icon={<BookOpen size={18} />}
+          title="No topics yet"
+          description="Save a link and the first route builds itself."
+        />
+      </div>
     );
   }
 
   return (
-    <ul className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-      {topics.map((topic) => (
-        <li key={topic.id}>
+    <ul className="grid sm:grid-cols-2 xl:grid-cols-3">
+      {topics.map((topic, position) => (
+        <li className="border-b border-r border-line" key={topic.id}>
           <Link
-            className="group flex h-full min-h-48 flex-col rounded-2xl bg-surface px-5 py-5 shadow-[0_8px_24px_rgba(20,34,31,0.05)] transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(20,34,31,0.09)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+            className="group relative flex h-full min-h-[12.5rem] flex-col justify-between p-6 transition-colors duration-300 hover:bg-surface-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-signal sm:p-8"
             href={`/topics/${topic.id}`}
           >
-            <div className="flex items-start justify-between gap-4">
-              <span className="grid size-9 place-items-center rounded-full bg-signal-soft text-signal">
-                <span className="size-2.5 rounded-full bg-current" />
+            <span
+              className="absolute inset-x-0 top-0 h-px w-0 bg-signal transition-[width] duration-500 ease-out group-hover:w-full"
+              aria-hidden="true"
+            />
+            <div className="flex items-start justify-between">
+              <span className="mono-label transition-colors group-hover:text-signal">
+                {String(position + 1).padStart(2, "0")}
               </span>
-              <ArrowUpRight className="text-ink-faint transition-colors group-hover:text-signal" size={17} />
+              <ArrowUpRight
+                className="text-line-strong transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-signal"
+                size={16}
+              />
             </div>
-            <h2 className="mt-5 text-lg font-semibold tracking-[-0.02em] text-ink">{topic.name}</h2>
-            <p className="mt-1 text-xs text-ink-muted">
-              {topic.itemCount} {topic.itemCount === 1 ? "source" : "sources"}
-              {topic.lastGeneratedAt ? ` · Updated ${formatDate(topic.lastGeneratedAt)}` : " · Building materials"}
-            </p>
-            <div className="mt-auto flex flex-wrap gap-1.5 pt-5">
-              {topic.artifactKinds.length ? (
-                topic.artifactKinds.map((kind) => (
-                  <span className="rounded-full bg-surface-muted px-2.5 py-1 text-[0.6875rem] font-semibold text-ink-muted" key={kind}>
+
+            <div className="mt-10">
+              <h2 className="display text-[1.15rem] leading-[1.1] transition-colors group-hover:text-signal">
+                {topic.name}
+              </h2>
+              <p className="mono-label mt-4">
+                {String(topic.itemCount).padStart(2, "0")}{" "}
+                {topic.itemCount === 1 ? "source" : "sources"}
+                {topic.lastGeneratedAt ? ` · ${formatDate(topic.lastGeneratedAt)}` : " · building"}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {topic.artifactKinds.map((kind) => (
+                  <span
+                    className="border border-line px-2.5 py-1 font-mono text-[0.625rem] uppercase tracking-[0.08em] text-ink-faint"
+                    key={kind}
+                  >
                     {artifactLabels[kind]}
                   </span>
-                ))
-              ) : (
-                <span className="text-xs text-ink-faint">No current artifacts yet</span>
-              )}
+                ))}
+              </div>
             </div>
           </Link>
         </li>

@@ -15,7 +15,7 @@ export function SaveLinkForm() {
   const [state, action, pending] = useActionState(saveLinkAction, initialState);
 
   return (
-    <form action={action} className="grid gap-4">
+    <form action={action} className="grid gap-6">
       <InputField
         label="Link"
         name="url"
@@ -34,15 +34,17 @@ export function SaveLinkForm() {
       />
       {state.message ? (
         <div
-          className={`flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-sm ${
-            state.status === "error" ? "bg-danger-soft text-danger" : "bg-success-soft text-success"
+          className={`flex items-start gap-3 border-l-2 py-3 pl-4 text-sm leading-6 ${
+            state.status === "error"
+              ? "border-danger bg-danger-soft/60 text-danger"
+              : "border-signal bg-signal-soft/60 text-signal"
           }`}
           role={state.status === "error" ? "alert" : "status"}
         >
           {state.status === "duplicate" ? (
-            <CopyCheck className="mt-0.5 shrink-0" size={16} />
+            <CopyCheck className="mt-1 shrink-0" size={15} />
           ) : (
-            <CheckCircle2 className="mt-0.5 shrink-0" size={16} />
+            <CheckCircle2 className="mt-1 shrink-0" size={15} />
           )}
           <span>
             {state.message}{" "}
@@ -54,13 +56,10 @@ export function SaveLinkForm() {
           </span>
         </div>
       ) : null}
-      <Button disabled={pending} type="submit">
-        {pending ? <LoaderCircle className="animate-spin" size={17} /> : <Link2 size={17} />}
+      <Button className="w-full sm:w-auto sm:justify-self-start" disabled={pending} type="submit">
+        {pending ? <LoaderCircle className="animate-spin" size={16} /> : <Link2 size={16} />}
         {pending ? "Saving…" : "Save link"}
       </Button>
-      <p className="text-xs leading-5 text-ink-faint">
-        LearnIT queues the source now. Transcripts, classification, and materials are built in the background.
-      </p>
     </form>
   );
 }

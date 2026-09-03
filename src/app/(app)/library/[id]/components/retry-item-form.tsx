@@ -19,16 +19,16 @@ export function RetryItemForm({ itemId, stageLabel }: RetryItemFormProps) {
   );
 
   return (
-    <div className="flex flex-col items-start gap-2">
+    <div className="flex flex-col items-start gap-3">
       <form action={action}>
         <Button disabled={pending} type="submit" variant="secondary">
-          {pending ? <LoaderCircle className="animate-spin" size={16} /> : <RotateCcw size={16} />}
+          {pending ? <LoaderCircle className="animate-spin" size={15} /> : <RotateCcw size={15} />}
           {pending ? "Queuing…" : `Retry ${stageLabel}`}
         </Button>
       </form>
       {state.message ? (
         <p
-          className={`text-sm ${state.status === "error" ? "text-danger" : "text-success"}`}
+          className={`font-mono text-[0.6875rem] ${state.status === "error" ? "text-danger" : "text-signal"}`}
           role="status"
         >
           {state.message}

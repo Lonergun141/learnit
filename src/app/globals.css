@@ -1,31 +1,35 @@
 @import "tailwindcss";
 
+/*
+ * SIGNAL LAB — dark warm-charcoal canvas, cream type, pistachio signal.
+ * Structure comes from hairlines and blueprint linework, never from shadows.
+ */
 :root {
-  color-scheme: light;
-  --background: #f4f3ed;
-  --foreground: #14221f;
-  --surface: #ffffff;
-  --surface-muted: #ebece6;
-  --surface-strong: #dde0d8;
-  --ink: #14221f;
-  --ink-soft: #253c37;
-  --ink-muted: #576762;
-  --ink-faint: #78857f;
-  --line: #d9ddd5;
-  --line-strong: #b9c1b8;
-  --signal: #1f8f64;
-  --signal-soft: #d9f3e7;
-  --success: #16714e;
-  --success-soft: #dff3e9;
-  --danger: #a83d3d;
-  --danger-strong: #872e2e;
-  --danger-soft: #f9e4e1;
-  --warning: #906619;
-  --warning-soft: #f8edcf;
-  --info: #33689a;
-  --info-soft: #e0ecf6;
-  --violet: #67539b;
-  --violet-soft: #ebe7f6;
+  color-scheme: dark;
+  --background: #171514;
+  --foreground: #fffcec;
+  --surface: #1e1b1a;
+  --surface-muted: #262322;
+  --surface-strong: #332f2d;
+  --ink: #fffcec;
+  --ink-soft: #e7e2d1;
+  --ink-muted: #a29c8e;
+  --ink-faint: #746e63;
+  --line: #2c2927;
+  --line-strong: #423d39;
+  --signal: #c3eda1;
+  --signal-soft: #232c1a;
+  --success: #a9e5b4;
+  --success-soft: #1b2a20;
+  --danger: #f0a093;
+  --danger-strong: #f8c1b6;
+  --danger-soft: #331e1a;
+  --warning: #f0d36a;
+  --warning-soft: #302816;
+  --info: #a8cdee;
+  --info-soft: #1a2430;
+  --violet: #c9b8f0;
+  --violet-soft: #241f36;
 }
 
 @theme inline {
@@ -53,8 +57,10 @@
   --color-info-soft: var(--info-soft);
   --color-violet: var(--violet);
   --color-violet-soft: var(--violet-soft);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-poppins);
+  --font-mono: var(--font-fragment-mono);
+  --font-serif: var(--font-instrument-serif);
 }
 
 * {
@@ -66,15 +72,32 @@ html {
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
+  /* Two cold-then-warm washes keep the flat charcoal from reading as dead grey. */
+  background-image:
+    radial-gradient(70rem 38rem at 8% -12%, color-mix(in oklab, var(--signal) 7%, transparent), transparent 62%),
+    radial-gradient(60rem 34rem at 104% -4%, color-mix(in oklab, var(--info) 6%, transparent), transparent 58%);
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
   text-rendering: optimizeLegibility;
 }
 
+/* Film grain, painted over everything but inert to input. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 ::selection {
-  background: var(--signal-soft);
-  color: var(--ink);
+  background: var(--signal);
+  color: #14170f;
 }
 
 * {
@@ -83,7 +106,7 @@ body {
 }
 
 a {
-  text-underline-offset: 0.18em;
+  text-underline-offset: 0.22em;
 }
 
 input,
@@ -91,6 +114,121 @@ select,
 textarea,
 button {
   caret-color: var(--signal);
+}
+
+select option {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+@layer components {
+  /* Micro-label: the technical caption that runs above headings and beside data. */
+  .mono-label {
+    font-family: var(--font-fragment-mono), ui-monospace, monospace;
+    font-size: 0.6875rem;
+    line-height: 1;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* Display: the heavy geometric voice used for every page and section title. */
+  .display {
+    font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  /* Editorial italic, reserved for a single accent word inside a display line. */
+  .accent-italic {
+    font-family: var(--font-instrument-serif), ui-serif, Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: -0.01em;
+  }
+
+  /* [ BRACKETED ] — the site's link signature. */
+  .bracket-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5ch;
+    font-family: var(--font-fragment-mono), ui-monospace, monospace;
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    transition: color 200ms ease;
+  }
+
+  .bracket-link::before {
+    content: "[";
+    color: var(--ink-faint);
+    transition: color 200ms ease;
+  }
+
+  .bracket-link::after {
+    content: "]";
+    color: var(--ink-faint);
+    transition: color 200ms ease;
+  }
+
+  .bracket-link:hover {
+    color: var(--signal);
+  }
+
+  .bracket-link:hover::before,
+  .bracket-link:hover::after {
+    color: var(--signal);
+  }
+
+  /* Panel: hairline-bounded work surface. Depth is drawn, not blurred. */
+  .panel {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 0.875rem;
+    background: color-mix(in oklab, var(--surface) 82%, transparent);
+  }
+
+  /* Blueprint field: the faint measured grid behind hero areas. */
+  .grid-field {
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, var(--signal) 6%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, var(--signal) 6%, transparent) 1px, transparent 1px);
+    background-size: 4.5rem 4.5rem;
+  }
+}
+
+@layer utilities {
+  .rise {
+    animation: rise 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .marquee-track {
+    animation: marquee 38s linear infinite;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

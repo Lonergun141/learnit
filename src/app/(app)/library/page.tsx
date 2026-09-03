@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-import { PageHeader } from "@/components/ui/page-header";
+import { HeroBand } from "@/components/ui/hero-band";
+import { SheetSection } from "@/components/ui/sheet-section";
 import { getLibraryData, type LibraryFilters } from "@/lib/learning/queries";
 import type { Database } from "@/types/database";
 
@@ -37,16 +38,34 @@ export default async function LibraryPage({ searchParams }: PageProps<"/library"
   const data = await getLibraryData(filters);
 
   return (
-    <div className="grid gap-6">
-      <PageHeader
-        title="Library"
-        description="Every source you capture, from first arrival to finished learning material."
+    <div>
+      <HeroBand
+        eyebrow="Index"
+        figure="axis"
+        title={
+          <>
+            The <span className="accent-italic text-signal">library</span>
+          </>
+        }
+        meta={
+          <div className="flex items-baseline gap-3 sm:block">
+            <p className="display text-[1.75rem] leading-none tabular-nums">
+              {String(data.items.length).padStart(2, "0")}
+            </p>
+            <p className="mono-label sm:mt-2">
+              {data.items.length === 1 ? "Source" : "Sources"}
+            </p>
+          </div>
+        }
       />
-      <LibraryFilterForm filters={filters} topics={data.topics} />
-      <p className="text-xs font-medium tabular-nums text-ink-faint">
-        {data.items.length} {data.items.length === 1 ? "source" : "sources"}
-      </p>
-      <LibraryList items={data.items} />
+
+      <SheetSection index="01" label="Filter" flush>
+        <LibraryFilterForm filters={filters} topics={data.topics} />
+      </SheetSection>
+
+      <SheetSection index="02" label="Manifest" flush>
+        <LibraryList items={data.items} />
+      </SheetSection>
     </div>
   );
 }

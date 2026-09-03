@@ -14,16 +14,16 @@ export function PlaylistSync() {
   );
 
   return (
-    <div className="mt-5 border-t border-line pt-5">
+    <div className="mt-10 border-t border-line pt-8">
       <form action={action}>
         <Button disabled={pending} type="submit" variant="secondary">
-          {pending ? <LoaderCircle className="animate-spin" size={16} /> : <RefreshCw size={16} />}
-          {pending ? "Queueing sync…" : "Sync playlist now"}
+          {pending ? <LoaderCircle className="animate-spin" size={15} /> : <RefreshCw size={15} />}
+          {pending ? "Queueing…" : "Sync now"}
         </Button>
       </form>
       {state.message ? (
         <p
-          className={`mt-3 text-sm ${state.status === "error" ? "text-danger" : "text-success"}`}
+          className={`mt-4 text-sm ${state.status === "error" ? "text-danger" : "text-signal"}`}
           role="status"
         >
           {state.message}

@@ -1,32 +1,22 @@
-import { ArrowLeft, ArrowUpRight, FileText, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, FileText, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { buttonClassName } from "@/components/ui/button";
+import { Readout } from "@/components/ui/readout";
+import { SheetSection } from "@/components/ui/sheet-section";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { HeroBand } from "@/components/ui/hero-band";
 import { getLearningItem } from "@/lib/learning/queries";
 import { determineRetryStage } from "@/lib/learning/statuses";
+import { cn } from "@/lib/utils/cn";
 import { formatDateTime } from "@/lib/utils/format";
 
 import { RetryItemForm } from "./components/retry-item-form";
 
 export const metadata: Metadata = { title: "Library item" };
-
-interface DetailRowProps {
-  label: string;
-  value: string;
-}
-
-function DetailRow({ label, value }: DetailRowProps) {
-  return (
-    <div className="grid gap-1 border-b border-line py-3.5 last:border-b-0 sm:grid-cols-[9rem_1fr] sm:gap-4">
-      <dt className="text-xs font-semibold text-ink-faint">{label}</dt>
-      <dd className="text-sm text-ink">{value}</dd>
-    </div>
-  );
-}
 
 export default async function LibraryItemPage({ params }: PageProps<"/library/[id]">) {
   const { id } = await params;
@@ -40,78 +30,111 @@ export default async function LibraryItemPage({ params }: PageProps<"/library/[i
     failureStage: item.failure_stage,
   });
 
-  return (
-    <div className="grid gap-6">
-      <Link className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-ink-muted hover:text-ink" href="/library">
-        <ArrowLeft size={16} /> Back to library
-      </Link>
+  const stations = [
+    { label: "Added", at: item.added_at },
+    { label: "Fetched", at: item.fetched_at },
+    { label: "Sorted", at: item.sorted_at },
+    { label: "Built", at: item.built_at },
+  ];
 
-      <header className="flex flex-col gap-5 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0 max-w-3xl">
-          <div className="mb-3"><StatusBadge status={item.status} /></div>
-          <h1 className="text-2xl font-semibold tracking-[-0.025em] text-ink sm:text-[1.75rem]">
-            {item.title ?? "Untitled source"}
-          </h1>
-          <a
-            className="mt-2 inline-flex max-w-full items-center gap-1.5 truncate text-sm text-ink-muted underline decoration-line-strong hover:text-signal"
-            href={item.url}
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            <span className="truncate">{item.canonical_url}</span><ArrowUpRight className="shrink-0" size={14} />
-          </a>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {retryStage ? (
-            <RetryItemForm itemId={item.id} stageLabel={retryStage.replace("_", " ")} />
-          ) : null}
-          {item.status === "done" && item.topics ? (
-            <Link className={buttonClassName()} href={`/topics/${item.topics.id}`}>
-              <FileText size={16} /> Open materials
-            </Link>
-          ) : null}
-        </div>
-      </header>
+  return (
+    <div>
+      <div className="border-b border-line px-6 py-4 sm:px-10 lg:px-14">
+        <Link className="bracket-link" href="/library">
+          <ArrowLeft size={13} /> Library
+        </Link>
+      </div>
+
+      <HeroBand
+        eyebrow="Source"
+        title={item.title ?? "Untitled source"}
+        meta={<StatusBadge status={item.status} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-6">
+            <a
+              className="bracket-link"
+              href={item.url}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              Open original <ArrowUpRight size={12} />
+            </a>
+            {retryStage ? (
+              <RetryItemForm itemId={item.id} stageLabel={retryStage.replace("_", " ")} />
+            ) : null}
+            {item.status === "done" && item.topics ? (
+              <Link className={buttonClassName()} href={`/topics/${item.topics.id}`}>
+                <FileText size={15} /> Materials
+              </Link>
+            ) : null}
+          </div>
+        }
+      />
+
+      <Readout
+        className="border-t-0"
+        items={[
+          { label: "Topic", value: item.topics?.name ?? "Unsorted" },
+          { label: "Author", value: item.author ?? "Unknown" },
+          { label: "Content", value: item.content_type === "youtube" ? "YouTube" : "Article" },
+          { label: "Origin", value: item.source.replace("_", " ") },
+        ]}
+      />
 
       {item.error ? (
-        <section className="rounded-2xl bg-danger-soft px-5 py-4 text-danger" aria-labelledby="item-error-title">
-          <div className="flex gap-3">
-            <RotateCcw className="mt-0.5 shrink-0" size={18} />
+        <section
+          className="border-b border-line bg-danger-soft/50 px-6 py-8 sm:px-10 lg:px-14"
+          aria-labelledby="item-error-title"
+        >
+          <div className="flex gap-4 text-danger">
+            <TriangleAlert className="mt-0.5 shrink-0" size={17} />
             <div>
-              <h2 className="text-sm font-semibold" id="item-error-title">Processing stopped</h2>
-              <p className="mt-1 text-sm leading-6">{item.error}</p>
+              <h2 className="mono-label text-danger" id="item-error-title">
+                Processing stopped
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6">{item.error}</p>
             </div>
           </div>
         </section>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.55fr)]">
-        <section className="rounded-2xl bg-surface px-5 py-5 shadow-[0_8px_24px_rgba(20,34,31,0.05)] sm:px-6">
-          <h2 className="text-base font-semibold text-ink">Source details</h2>
-          <dl className="mt-3">
-            <DetailRow label="Topic" value={item.topics?.name ?? "Not classified yet"} />
-            <DetailRow label="Author" value={item.author ?? "Unknown"} />
-            <DetailRow label="Content" value={item.content_type === "youtube" ? "YouTube video" : "Article"} />
-            <DetailRow label="Captured via" value={item.source.replace("_", " ")} />
-          </dl>
-          <div className="mt-6 border-t border-line pt-5">
-            <h2 className="text-sm font-semibold text-ink">Your note</h2>
-            <p className="mt-2 max-w-[72ch] whitespace-pre-wrap text-sm leading-6 text-ink-muted">
-              {item.note ?? "No note was added with this source."}
-            </p>
-          </div>
-        </section>
+      <SheetSection index="01" label="Route">
+        <ol className="relative grid gap-10 sm:grid-cols-4 sm:gap-6">
+          <span
+            className="absolute left-1 right-1 top-[0.3125rem] hidden h-px bg-line sm:block"
+            aria-hidden="true"
+          />
+          {stations.map((station) => (
+            <li className="relative" key={station.label}>
+              <span
+                className={cn(
+                  "block size-2.5 rounded-full border",
+                  station.at ? "border-signal bg-signal" : "border-line-strong bg-background",
+                )}
+                aria-hidden="true"
+              />
+              <p className="mono-label mt-6">{station.label}</p>
+              <p
+                className={cn(
+                  "mt-3 font-mono text-[0.75rem] leading-5",
+                  station.at ? "text-ink-soft" : "text-ink-faint",
+                )}
+              >
+                {formatDateTime(station.at)}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </SheetSection>
 
-        <section className="rounded-2xl bg-surface px-5 py-5 shadow-[0_8px_24px_rgba(20,34,31,0.05)] sm:px-6">
-          <h2 className="text-base font-semibold text-ink">Route history</h2>
-          <dl className="mt-3">
-            <DetailRow label="Added" value={formatDateTime(item.added_at)} />
-            <DetailRow label="Fetched" value={formatDateTime(item.fetched_at)} />
-            <DetailRow label="Sorted" value={formatDateTime(item.sorted_at)} />
-            <DetailRow label="Materials built" value={formatDateTime(item.built_at)} />
-          </dl>
-        </section>
-      </div>
+      <SheetSection index="02" label="Note">
+        <p className="max-w-[70ch] whitespace-pre-wrap text-sm leading-7 text-ink-muted">
+          {item.note ?? "No note was added."}
+        </p>
+        <p className="mt-8 break-all font-mono text-[0.6875rem] text-ink-faint">
+          {item.canonical_url}
+        </p>
+      </SheetSection>
     </div>
   );
 }

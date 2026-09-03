@@ -6,11 +6,14 @@ export const metadata: Metadata = { title: "Create account" };
 
 export default function SignupPage() {
   return (
-    <div>
-      <h1 className="text-3xl font-semibold tracking-[-0.03em] text-ink">Start your library</h1>
-      <p className="mt-2 text-sm leading-6 text-ink-muted">
-        Capture what matters and turn scattered sources into useful knowledge.
+    <div className="rise">
+      <p className="mono-label flex items-center gap-3">
+        <span className="h-px w-8 bg-signal" aria-hidden="true" />
+        New account
       </p>
+      <h1 className="display mt-8 text-[2.5rem] leading-[0.95]">
+        Start your <span className="accent-italic text-signal">library</span>
+      </h1>
       <AuthForm mode="signup" />
     </div>
   );

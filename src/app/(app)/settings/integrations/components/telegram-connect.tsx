@@ -15,25 +15,34 @@ export function TelegramConnect() {
 
   return (
     <div>
-      <div className="flex items-start gap-4">
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-info-soft text-info"><Send size={20} /></span>
-        <div>
-          <h2 className="text-base font-semibold text-ink">Connect Telegram</h2>
-          <p className="mt-1 text-sm leading-6 text-ink-muted">Send links to the shared LearnIT bot and receive your own private digest.</p>
-        </div>
-      </div>
-      <form action={action} className="mt-5">
+      <p className="display text-[1.35rem] leading-tight">Connect Telegram</p>
+      <p className="mt-5 max-w-md text-sm leading-7 text-ink-muted">
+        Send links to the bot and receive your own digest.
+      </p>
+      <form action={action} className="mt-8">
         <Button disabled={pending} type="submit" variant="secondary">
-          {pending ? <LoaderCircle className="animate-spin" size={16} /> : <Send size={16} />}
-          {pending ? "Creating link…" : "Create connection link"}
+          {pending ? <LoaderCircle className="animate-spin" size={15} /> : <Send size={15} />}
+          {pending ? "Creating…" : "Create link"}
         </Button>
       </form>
       {state.message ? (
-        <div className={`mt-4 rounded-xl px-4 py-3 text-sm ${state.status === "error" ? "bg-danger-soft text-danger" : "bg-success-soft text-success"}`} role="status">
+        <div
+          className={`mt-8 border-l-2 py-3 pl-4 text-sm leading-6 ${
+            state.status === "error"
+              ? "border-danger bg-danger-soft/60 text-danger"
+              : "border-signal bg-signal-soft/60 text-signal"
+          }`}
+          role="status"
+        >
           <p>{state.message}</p>
           {state.url ? (
-            <a className={buttonClassName("primary", "mt-3")} href={state.url} target="_blank" rel="noreferrer noopener">
-              Open Telegram <ArrowUpRight size={16} />
+            <a
+              className={buttonClassName("primary", "mt-5")}
+              href={state.url}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              Open Telegram <ArrowUpRight size={15} />
             </a>
           ) : null}
         </div>

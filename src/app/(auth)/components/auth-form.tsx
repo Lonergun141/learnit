@@ -24,7 +24,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   );
 
   return (
-    <form action={action} className="mt-8 grid gap-5" noValidate>
+    <form action={action} className="mt-10 grid gap-5" noValidate>
       {isSignup ? (
         <InputField
           label="Display name"
@@ -57,21 +57,21 @@ export function AuthForm({ mode }: AuthFormProps) {
         required
       />
       {state.message ? (
-        <p className="rounded-xl bg-surface-muted px-3.5 py-3 text-sm leading-5 text-ink-muted" role="status">
+        <p
+          className="rounded-lg border border-line bg-surface-muted/60 px-4 py-3 text-sm leading-6 text-ink-muted"
+          role="status"
+        >
           {state.message}
         </p>
       ) : null}
-      <Button className="mt-1 w-full" disabled={pending} type="submit">
-        {pending ? <LoaderCircle className="animate-spin" size={17} /> : null}
+      <Button className="mt-2 w-full" disabled={pending} type="submit">
+        {pending ? <LoaderCircle className="animate-spin" size={16} /> : null}
         {pending ? "Working…" : isSignup ? "Create account" : "Sign in"}
-        {!pending ? <ArrowRight size={17} /> : null}
+        {!pending ? <ArrowRight size={16} /> : null}
       </Button>
-      <p className="text-center text-sm text-ink-muted">
-        {isSignup ? "Already have an account?" : "New to LearnIT?"}{" "}
-        <Link
-          className="font-semibold text-ink underline decoration-line-strong hover:decoration-signal"
-          href={isSignup ? "/login" : "/signup"}
-        >
+      <p className="mt-2 flex items-center justify-center gap-2 text-center text-sm text-ink-faint">
+        {isSignup ? "Already have an account?" : "New to LearnIT?"}
+        <Link className="bracket-link" href={isSignup ? "/login" : "/signup"}>
           {isSignup ? "Sign in" : "Create one"}
         </Link>
       </p>
