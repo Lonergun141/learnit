@@ -1,6 +1,6 @@
 begin;
 
-select plan(82);
+select plan(88);
 
 select ok(
   exists (
@@ -1010,6 +1010,100 @@ select is(
 );
 
 reset role;
+
+-- Ready-to-study replies. The worker asks for the chat, the toggle state, and
+-- the message ids to thread under. Items that did not arrive from Telegram have
+-- no message to reply to and must not appear, which is what stops a playlist
+-- pull from producing a reply per video.
+
+select ok(
+  to_regprocedure('public.get_telegram_notice_context(uuid,uuid[])') is not null,
+  'telegram notice context RPC exists'
+);
+
+select is(
+  (
+    select settings.ready_replies_enabled
+    from public.user_settings as settings
+    where settings.user_id = '22222222-2222-4222-8222-222222222222'
+  ),
+  true,
+  'ready-to-study replies are on by default'
+);
+
+update public.learning_items
+set provider_metadata = jsonb_build_object('telegram_message_id', 4242)
+where user_id = '22222222-2222-4222-8222-222222222222'
+  and status = 'done';
+
+select is(
+  jsonb_array_length(
+    public.get_telegram_notice_context(
+      '22222222-2222-4222-8222-222222222222',
+      array(
+        select learning_item.id
+        from public.learning_items as learning_item
+        where learning_item.user_id = '22222222-2222-4222-8222-222222222222'
+      )
+    ) -> 'items'
+  ),
+  1,
+  'only items carrying an originating Telegram message are returned'
+);
+
+select is(
+  (
+    public.get_telegram_notice_context(
+      '22222222-2222-4222-8222-222222222222',
+      array(
+        select learning_item.id
+        from public.learning_items as learning_item
+        where learning_item.user_id = '22222222-2222-4222-8222-222222222222'
+          and learning_item.status = 'done'
+      )
+    ) -> 'items' -> 0 ->> 'telegramMessageId'
+  )::bigint,
+  4242::bigint,
+  'the reply target is the message the link arrived in'
+);
+
+update public.user_settings
+set ready_replies_enabled = false
+where user_id = '22222222-2222-4222-8222-222222222222';
+
+select is(
+  (
+    public.get_telegram_notice_context(
+      '22222222-2222-4222-8222-222222222222',
+      array(
+        select learning_item.id
+        from public.learning_items as learning_item
+        where learning_item.user_id = '22222222-2222-4222-8222-222222222222'
+      )
+    ) ->> 'enabled'
+  )::boolean,
+  false,
+  'turning replies off is reported to the worker'
+);
+
+select is(
+  (
+    public.get_telegram_notice_context(
+      '11111111-1111-4111-8111-111111111111',
+      array(
+        select learning_item.id
+        from public.learning_items as learning_item
+        where learning_item.user_id = '22222222-2222-4222-8222-222222222222'
+      )
+    ) -> 'items'
+  ),
+  '[]'::jsonb,
+  'another account cannot pull reply targets for items it does not own'
+);
+
+update public.user_settings
+set ready_replies_enabled = true
+where user_id = '22222222-2222-4222-8222-222222222222';
 
 -- A project that already had accounts before this schema was deployed has
 -- auth users with no profile or settings, because the bootstrap trigger only

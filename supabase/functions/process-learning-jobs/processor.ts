@@ -7,6 +7,7 @@ import { normalizeTopicName, type TopicCandidate } from "../_shared/topics.ts";
 import { extractYouTubePlaylistId } from "../_shared/urls.ts";
 import type { LearningJob } from "./handler.ts";
 import { formatDigestMessage, type DigestItem } from "./digest.ts";
+import { planTelegramNotices, type TelegramNoticeContext } from "./notices.ts";
 import { selectTopicSources } from "./sources.ts";
 
 interface LearningItem {
@@ -86,6 +87,10 @@ export interface LearningJobDatabase {
     status: "sent" | "skipped";
     telegramMessageId: number | null;
   }): Promise<void>;
+  getTelegramNoticeContext(
+    userId: string,
+    itemIds: string[],
+  ): Promise<TelegramNoticeContext>;
 }
 
 export interface LearningProviders {
@@ -101,10 +106,14 @@ export interface LearningProviders {
     sources: readonly { title: string | null; content: string }[];
   }): Promise<TopicMaterials>;
   fetchPlaylistVideoIds(playlistId: string): Promise<string[]>;
-  sendTelegram(chatId: number, message: string): Promise<number[]>;
+  sendTelegram(
+    chatId: number,
+    message: string,
+    options?: { replyToMessageId?: number | null; silent?: boolean },
+  ): Promise<number[]>;
 }
 
-interface ProcessorDependencies {
+export interface ProcessorDependencies {
   database: LearningJobDatabase;
   providers: LearningProviders;
   model: string;
@@ -200,13 +209,45 @@ async function processTopicBuild(
     topicName: topic.name,
     sources,
   });
+  const sourceItemIds = sources.map((source) => source.id);
   await dependencies.database.completeTopicBuild({
     jobId: job.id,
     workerId,
-    sourceItemIds: sources.map((source) => source.id),
+    sourceItemIds,
     model: dependencies.model,
     materials,
   });
+
+  await sendTelegramNotices(sourceItemIds, job.userId, "ready", dependencies);
+}
+
+/**
+ * Replies under the messages these items arrived in, silently.
+ *
+ * The build itself has already been recorded by this point, so a Telegram
+ * outage must not undo it: a failure here is swallowed rather than thrown. The
+ * worst case is a missing reply, and the daily digest still reports the item.
+ */
+export async function sendTelegramNotices(
+  itemIds: string[],
+  userId: string,
+  kind: "ready" | "failed",
+  dependencies: ProcessorDependencies,
+): Promise<void> {
+  if (itemIds.length === 0) return;
+
+  try {
+    const context = await dependencies.database.getTelegramNoticeContext(userId, itemIds);
+    for (const notice of planTelegramNotices(context, dependencies.appBaseUrl, kind)) {
+      await dependencies.providers.sendTelegram(notice.chatId, notice.text, {
+        replyToMessageId: notice.replyToMessageId,
+        silent: true,
+      });
+    }
+  } catch {
+    // A reply is a courtesy on top of work that already succeeded or already
+    // failed; neither outcome changes because the chat could not be reached.
+  }
 }
 
 async function processPlaylistCapture(

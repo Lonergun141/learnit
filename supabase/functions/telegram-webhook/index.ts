@@ -53,7 +53,10 @@ const telegramWebhook = {
             p_url: input.url,
             p_canonical_url: input.canonicalUrl,
             p_note: input.note,
-            p_provider_metadata: {},
+            p_provider_metadata:
+              input.telegramMessageId === null
+                ? {}
+                : { telegram_message_id: input.telegramMessageId },
           });
           const result = data?.[0];
           if (error || !result) throw new Error("Unable to create learning item");

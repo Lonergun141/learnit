@@ -19,6 +19,7 @@ const checkbox = z
 export const preferencesSchema = z
   .object({
     digestEnabled: checkbox,
+    readyRepliesEnabled: checkbox,
     digestHour: z.coerce.number().int().min(0).max(23),
     timezone: z.string().trim().min(1).max(100).refine(isIanaTimezone, "Use a valid IANA timezone"),
     youtubeCaptureEnabled: checkbox,

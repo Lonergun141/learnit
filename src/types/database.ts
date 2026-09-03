@@ -410,6 +410,7 @@ export type Database = {
           digest_enabled: boolean
           digest_hour: number
           onboarded_at: string | null
+          ready_replies_enabled: boolean
           timezone: string
           updated_at: string
           user_id: string
@@ -423,6 +424,7 @@ export type Database = {
           digest_enabled?: boolean
           digest_hour?: number
           onboarded_at?: string | null
+          ready_replies_enabled?: boolean
           timezone?: string
           updated_at?: string
           user_id: string
@@ -436,6 +438,7 @@ export type Database = {
           digest_enabled?: boolean
           digest_hour?: number
           onboarded_at?: string | null
+          ready_replies_enabled?: boolean
           timezone?: string
           updated_at?: string
           user_id?: string
@@ -605,6 +608,10 @@ export type Database = {
       }
       get_digest_context: {
         Args: { p_job_id: string; p_worker_id: string }
+        Returns: Json
+      }
+      get_telegram_notice_context: {
+        Args: { p_item_ids: string[]; p_user_id: string }
         Returns: Json
       }
       invoke_process_learning_jobs: { Args: never; Returns: number }

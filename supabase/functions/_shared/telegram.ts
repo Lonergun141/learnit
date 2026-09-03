@@ -133,18 +133,41 @@ export function splitTelegramMessage(message: string, limit = 3500): string[] {
   return chunks;
 }
 
+export interface TelegramSendOptions {
+  /**
+   * Thread the message under one the person sent, so a reply reads as part of
+   * their conversation rather than as a broadcast.
+   */
+  replyToMessageId?: number | null;
+  /** Deliver without a push alert: it lands in the chat, the phone stays quiet. */
+  silent?: boolean;
+}
+
 export async function sendTelegramMessage(
   botToken: string,
   chatId: number,
   message: string,
   fetcher: typeof fetch = fetch,
+  options: TelegramSendOptions = {},
 ): Promise<number[]> {
   const messageIds: number[] = [];
-  for (const text of splitTelegramMessage(message)) {
+  for (const [index, text] of splitTelegramMessage(message).entries()) {
     const response = await fetcher(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text }),
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        ...(options.silent ? { disable_notification: true } : {}),
+        // Only the first chunk threads: Telegram shows the quoted parent on each
+        // reply, which would repeat the whole quote down a split message.
+        ...(index === 0 && typeof options.replyToMessageId === "number"
+          ? {
+              reply_to_message_id: options.replyToMessageId,
+              allow_sending_without_reply: true,
+            }
+          : {}),
+      }),
       signal: AbortSignal.timeout(10_000),
     });
 

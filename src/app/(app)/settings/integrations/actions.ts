@@ -49,6 +49,7 @@ export async function updatePreferencesAction(
     .from("user_settings")
     .update({
       digest_enabled: parsed.data.digestEnabled,
+      ready_replies_enabled: parsed.data.readyRepliesEnabled,
       digest_hour: parsed.data.digestHour,
       timezone: parsed.data.timezone,
       youtube_capture_enabled: parsed.data.youtubeCaptureEnabled,

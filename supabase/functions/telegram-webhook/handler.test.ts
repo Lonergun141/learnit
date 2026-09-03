@@ -83,6 +83,7 @@ describe("handleTelegramWebhook", () => {
       telegramRequest({
         update_id: 3,
         message: {
+          message_id: 5150,
           chat: { id: 123 },
           text: [
             "Save these",
@@ -104,10 +105,33 @@ describe("handleTelegramWebhook", () => {
       url: "https://example.com/new?utm_source=telegram",
       canonicalUrl: "https://example.com/new",
       note: "Save these",
+      telegramMessageId: 5150,
     });
     expect(deps.sendMessage).toHaveBeenCalledWith(
       123,
       "Added 1 item. 1 duplicate. 1 URL rejected.",
+    );
+  });
+
+  /**
+   * The message id is what a later "ready to study" reply threads under. Telegram
+   * always sends one in practice, but a capture must not be lost if it does not.
+   */
+  it("captures without a message id rather than dropping the link", async () => {
+    const createLearningItem = vi
+      .fn<TelegramWebhookDependencies["createLearningItem"]>()
+      .mockResolvedValue({ wasCreated: true });
+
+    await handleTelegramWebhook(
+      telegramRequest({
+        update_id: 9,
+        message: { chat: { id: 123 }, text: "https://example.com/no-id" },
+      }),
+      dependencies({ createLearningItem }),
+    );
+
+    expect(createLearningItem).toHaveBeenCalledWith(
+      expect.objectContaining({ telegramMessageId: null }),
     );
   });
 

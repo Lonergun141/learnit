@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { JsonValue } from "../_shared/providers/types.ts";
 import type { Database } from "../../../src/types/database.ts";
 import type { LearningJob } from "./handler.ts";
+import type { TelegramNoticeContext } from "./notices.ts";
 import type { LearningJobDatabase } from "./processor.ts";
 
 type SupabaseConnection = SupabaseClient<Database>;
@@ -40,6 +41,30 @@ function parseDigestContext(value: unknown) {
       typeof value.failedCount === "number" && value.failedCount >= 0
         ? value.failedCount
         : 0,
+  };
+}
+
+function parseTelegramNoticeContext(value: unknown): TelegramNoticeContext {
+  if (!isRecord(value)) return { enabled: false, chatId: null, items: [] };
+
+  const rawItems = Array.isArray(value.items) ? value.items : [];
+  const items = rawItems.flatMap((item) =>
+    isRecord(item) && typeof item.itemId === "string"
+      ? [{
+          itemId: item.itemId,
+          title: typeof item.title === "string" ? item.title : null,
+          topicId: typeof item.topicId === "string" ? item.topicId : null,
+          topicName: typeof item.topicName === "string" ? item.topicName : null,
+          telegramMessageId:
+            typeof item.telegramMessageId === "number" ? item.telegramMessageId : null,
+        }]
+      : [],
+  );
+
+  return {
+    enabled: value.enabled === true,
+    chatId: typeof value.chatId === "number" ? value.chatId : null,
+    items,
   };
 }
 
@@ -218,6 +243,15 @@ export function createLearningJobDatabase(
         p_telegram_message_id: input.telegramMessageId,
       });
       if (error) throw new Error("Unable to complete digest job");
+    },
+
+    async getTelegramNoticeContext(userId, itemIds) {
+      const { data, error } = await supabase.rpc("get_telegram_notice_context", {
+        p_user_id: userId,
+        p_item_ids: itemIds,
+      });
+      if (error) throw new Error("Unable to load Telegram notice context");
+      return parseTelegramNoticeContext(data);
     },
   };
 }
