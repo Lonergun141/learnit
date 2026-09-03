@@ -27,7 +27,10 @@ jobs:
 
       - run: npm test
 
-      # typecheck and build both write .next/types, so they must not overlap.
+      # PageProps and LayoutProps are generated into .next/types, which is not
+      # committed, so tsc needs `next typegen` to run first -- npm run typecheck
+      # does that itself. It writes the same directory as the build, so the two
+      # steps must stay sequential.
       - run: npm run typecheck
 
       - run: npm run build
