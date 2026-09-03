@@ -1,6 +1,6 @@
 begin;
 
-select plan(80);
+select plan(81);
 
 select ok(
   exists (
@@ -650,6 +650,26 @@ select set_config(
   true
 );
 
+-- A digest is issued in the morning and reports the local day that just ended,
+-- so the fixture built "now" belongs to the digest's own date and must be left
+-- out; the same item dated a day earlier must be picked up. Anything else means
+-- an evening capture is reported by no digest at all.
+select is(
+  jsonb_array_length(
+    public.get_digest_context(
+      current_setting('learnit.test_digest_job_id')::uuid,
+      'worker-maintenance'
+    ) -> 'items'
+  ),
+  0,
+  'digest context leaves out items built on the digest date itself'
+);
+
+update public.learning_items
+set built_at = built_at - interval '1 day'
+where user_id = '22222222-2222-4222-8222-222222222222'
+  and status = 'done';
+
 select is(
   jsonb_array_length(
     public.get_digest_context(
@@ -658,7 +678,7 @@ select is(
     ) -> 'items'
   ),
   1,
-  'digest context contains only items built for the user and local day'
+  'digest context reports the items built on the local day that just ended'
 );
 
 select is(
