@@ -48,6 +48,11 @@ export default async function TopicDetailPage({
   const parsedQuiz = activeTab === "quiz" && artifact
     ? quizSchema.safeParse(artifact.content_json)
     : null;
+  // Scores earned against an earlier build of this quiz answered different
+  // questions, so only the current artifact's attempts belong on screen.
+  const quizAttempts = artifact
+    ? data.quizAttempts.filter((attempt) => attempt.artifact_id === artifact.id)
+    : [];
 
   return (
     <div>
@@ -116,7 +121,12 @@ export default async function TopicDetailPage({
             />
           ) : activeTab === "quiz" ? (
             parsedQuiz?.success ? (
-              <Quiz quiz={parsedQuiz.data} />
+              <Quiz
+                quiz={parsedQuiz.data}
+                topicId={id}
+                artifactId={artifact.id}
+                attempts={quizAttempts}
+              />
             ) : (
               <EmptyState
                 icon={<ClipboardList size={18} />}

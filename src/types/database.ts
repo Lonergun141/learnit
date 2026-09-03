@@ -218,6 +218,54 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_attempts: {
+        Row: {
+          artifact_id: string
+          completed_at: string
+          created_at: string
+          id: string
+          score: number
+          topic_id: string
+          total_questions: number
+          user_id: string
+        }
+        Insert: {
+          artifact_id: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          score: number
+          topic_id: string
+          total_questions: number
+          user_id: string
+        }
+        Update: {
+          artifact_id?: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          score?: number
+          topic_id?: string
+          total_questions?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_artifact_owner_fk"
+            columns: ["artifact_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "topic_artifacts"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_topic_owner_fk"
+            columns: ["topic_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       telegram_connections: {
         Row: {
           chat_id: number
@@ -560,6 +608,14 @@ export type Database = {
         Returns: Json
       }
       invoke_process_learning_jobs: { Args: never; Returns: number }
+      record_quiz_attempt: {
+        Args: {
+          p_artifact_id: string
+          p_score: number
+          p_total_questions: number
+        }
+        Returns: string
+      }
       requeue_stale_jobs: {
         Args: { p_lock_timeout?: string }
         Returns: {

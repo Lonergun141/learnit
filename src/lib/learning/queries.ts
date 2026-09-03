@@ -161,7 +161,7 @@ export async function getTopicsData() {
 export async function getTopicData(topicId: string) {
   await requireAuthenticatedUser();
   const supabase = await createClient();
-  const [topic, sources, artifacts] = await Promise.all([
+  const [topic, sources, artifacts, quizAttempts] = await Promise.all([
     supabase.from("topics").select("id, name, created_at, updated_at").eq("id", topicId).maybeSingle(),
     supabase
       .from("learning_items")
@@ -173,13 +173,28 @@ export async function getTopicData(topicId: string) {
       .select("id, kind, version, content_markdown, content_json, source_item_ids, model, created_at")
       .eq("topic_id", topicId)
       .eq("is_current", true),
+    // Attempts against every quiz version this topic has had. The page keeps the
+    // ones matching the quiz on screen, so a rebuild does not mix old scores
+    // into a new question set.
+    supabase
+      .from("quiz_attempts")
+      .select("id, artifact_id, score, total_questions, completed_at")
+      .eq("topic_id", topicId)
+      .order("completed_at", { ascending: false })
+      .limit(50),
   ]);
 
   if (topic.error) throw new Error(topic.error.message);
   if (sources.error) throw new Error(sources.error.message);
   if (artifacts.error) throw new Error(artifacts.error.message);
+  if (quizAttempts.error) throw new Error(quizAttempts.error.message);
 
-  return { topic: topic.data, sources: sources.data, artifacts: artifacts.data };
+  return {
+    topic: topic.data,
+    sources: sources.data,
+    artifacts: artifacts.data,
+    quizAttempts: quizAttempts.data,
+  };
 }
 
 export async function getIntegrationSettings() {

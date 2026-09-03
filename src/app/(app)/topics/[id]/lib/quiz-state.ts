@@ -3,10 +3,17 @@ export interface QuizState {
   selectedOption: number | null;
   checked: boolean;
   score: number;
+  /**
+   * The option chosen for each question already checked, in question order. The
+   * running `score` drives the display; this is what gets sent when the run
+   * ends, so the recorded score is graded from the answers rather than asserted
+   * by the browser.
+   */
+  answers: number[];
 }
 
 export function createQuizState(): QuizState {
-  return { questionIndex: 0, selectedOption: null, checked: false, score: 0 };
+  return { questionIndex: 0, selectedOption: null, checked: false, score: 0, answers: [] };
 }
 
 export function selectQuizOption(state: QuizState, optionIndex: number): QuizState {
@@ -20,6 +27,7 @@ export function checkCurrentAnswer(state: QuizState, correctIndex: number): Quiz
     ...state,
     checked: true,
     score: state.score + (state.selectedOption === correctIndex ? 1 : 0),
+    answers: [...state.answers, state.selectedOption],
   };
 }
 
@@ -30,5 +38,10 @@ export function moveToNextQuestion(state: QuizState): QuizState {
     selectedOption: null,
     checked: false,
     score: state.score,
+    answers: state.answers,
   };
+}
+
+export function isQuizComplete(state: QuizState, questionCount: number): boolean {
+  return state.questionIndex >= questionCount;
 }
