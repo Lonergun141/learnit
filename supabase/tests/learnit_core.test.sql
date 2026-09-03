@@ -1,6 +1,6 @@
 begin;
 
-select plan(71);
+select plan(80);
 
 select ok(
   exists (
@@ -87,6 +87,7 @@ select has_table('public', 'learning_items', 'learning_items table exists');
 select has_table('public', 'topic_artifacts', 'topic_artifacts table exists');
 select has_table('public', 'learning_jobs', 'learning_jobs table exists');
 select has_table('public', 'digests', 'digests table exists');
+select has_table('public', 'quiz_attempts', 'quiz_attempts table exists');
 
 select is(
   (
@@ -103,11 +104,12 @@ select is(
         'learning_items',
         'topic_artifacts',
         'learning_jobs',
-        'digests'
+        'digests',
+        'quiz_attempts'
       ])
       and relation.relrowsecurity
   ),
-  9::bigint,
+  10::bigint,
   'RLS is enabled on every user-owned table'
 );
 
@@ -859,6 +861,122 @@ select is(
   ),
   1::bigint,
   'repeated playlist sync requests cannot create duplicate active jobs'
+);
+
+reset role;
+
+-- Quiz attempts. A finished run is recorded against the artifact that was
+-- answered, so a rebuilt quiz starts a fresh history, and retaking adds a row
+-- rather than overwriting the previous score.
+
+select set_config(
+  'test.quiz_artifact_id',
+  (
+    select artifact.id::text
+    from public.topic_artifacts as artifact
+    where artifact.user_id = '11111111-1111-4111-8111-111111111111'
+      and artifact.kind = 'quiz'
+      and artifact.is_current
+  ),
+  true
+);
+
+select set_config(
+  'test.guide_artifact_id',
+  (
+    select artifact.id::text
+    from public.topic_artifacts as artifact
+    where artifact.user_id = '11111111-1111-4111-8111-111111111111'
+      and artifact.kind = 'study_guide'
+      and artifact.is_current
+  ),
+  true
+);
+
+select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
+set local role authenticated;
+
+select isnt(
+  public.record_quiz_attempt(current_setting('test.quiz_artifact_id')::uuid, 7, 8),
+  null::uuid,
+  'an authenticated user can record a completed quiz run'
+);
+
+select public.record_quiz_attempt(current_setting('test.quiz_artifact_id')::uuid, 5, 8);
+
+select is(
+  (
+    select count(*)
+    from public.quiz_attempts
+    where user_id = '11111111-1111-4111-8111-111111111111'
+  ),
+  2::bigint,
+  'retaking a quiz records another attempt instead of replacing the last score'
+);
+
+select is(
+  (
+    select distinct topic_id
+    from public.quiz_attempts
+    where user_id = '11111111-1111-4111-8111-111111111111'
+  ),
+  '33333333-3333-4333-8333-333333333333'::uuid,
+  'an attempt takes its topic from the artifact rather than from the caller'
+);
+
+select throws_ok(
+  $$select public.record_quiz_attempt(
+      current_setting('test.quiz_artifact_id')::uuid,
+      9,
+      8
+    )$$,
+  '22023',
+  'Quiz score must fall within the number of questions',
+  'a score larger than the quiz itself is refused'
+);
+
+select throws_ok(
+  $$select public.record_quiz_attempt(
+      current_setting('test.guide_artifact_id')::uuid,
+      4,
+      8
+    )$$,
+  'P0002',
+  'Quiz not found',
+  'an artifact that is not a quiz cannot take an attempt'
+);
+
+reset role;
+
+select set_config('request.jwt.claim.sub', '22222222-2222-4222-8222-222222222222', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.record_quiz_attempt(
+      current_setting('test.quiz_artifact_id')::uuid,
+      8,
+      8
+    )$$,
+  'P0002',
+  'Quiz not found',
+  'an account cannot record a score against a quiz it does not own'
+);
+
+select is(
+  (select count(*) from public.quiz_attempts),
+  0::bigint,
+  'quiz attempts are invisible to another account'
+);
+
+reset role;
+
+select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
+set local role authenticated;
+
+select is(
+  (select count(*) from public.quiz_attempts),
+  2::bigint,
+  'an account reads back its own quiz attempts'
 );
 
 reset role;
