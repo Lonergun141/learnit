@@ -121,6 +121,25 @@ select option {
   color: var(--ink);
 }
 
+/*
+ * A modal <dialog> renders in the top layer, above the grain overlay and every
+ * stacking context, so the backdrop is the only thing that needs dimming.
+ */
+dialog::backdrop {
+  background: color-mix(in oklab, #0a0908 82%, transparent);
+  backdrop-filter: blur(3px);
+  animation: backdrop-in 300ms ease both;
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @layer components {
   /* Micro-label: the technical caption that runs above headings and beside data. */
   .mono-label {
