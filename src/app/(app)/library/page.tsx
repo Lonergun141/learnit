@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 
 import { HeroBand } from "@/components/ui/hero-band";
+import { LiveRefresh } from "@/components/ui/live-refresh";
 import { SheetSection } from "@/components/ui/sheet-section";
 import { getLibraryData, type LibraryFilters } from "@/lib/learning/queries";
+import { hasWorkInFlight } from "@/lib/learning/statuses";
 import type { Database } from "@/types/database";
 
 import { LibraryFilterForm } from "./components/library-filters";
@@ -36,9 +38,14 @@ export default async function LibraryPage({ searchParams }: PageProps<"/library"
       : undefined,
   };
   const data = await getLibraryData(filters);
+  const inFlight = hasWorkInFlight(
+    data.items.map((item) => ({ status: item.status, failureStage: item.failure_stage })),
+  );
 
   return (
     <div>
+      <LiveRefresh active={inFlight} />
+
       <HeroBand
         eyebrow="Index"
         figure="axis"

@@ -41,13 +41,13 @@ export async function getDashboardData() {
       supabase.from("topics").select("id", { count: "exact", head: true }),
       supabase
         .from("learning_items")
-        .select("id, title, canonical_url, built_at, status, topics(name)")
+        .select("id, title, canonical_url, built_at, status, failure_stage, topics(name)")
         .eq("status", "done")
         .order("built_at", { ascending: false, nullsFirst: false })
         .limit(5),
       supabase
         .from("learning_items")
-        .select("id, title, canonical_url, added_at, status, source, topics(name)")
+        .select("id, title, canonical_url, added_at, status, source, failure_stage, topics(name)")
         .order("added_at", { ascending: false })
         .limit(5),
     ]);
@@ -75,7 +75,9 @@ export async function getLibraryData(filters: LibraryFilters) {
 
   let query = supabase
     .from("learning_items")
-    .select("id, title, canonical_url, status, source, content_type, added_at, topics(id, name)")
+    .select(
+      "id, title, canonical_url, status, source, content_type, added_at, failure_stage, topics(id, name)",
+    )
     .order("added_at", { ascending: false })
     .limit(100);
 

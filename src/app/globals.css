@@ -91,7 +91,7 @@ body::after {
   inset: 0;
   z-index: 100;
   pointer-events: none;
-  opacity: 0.05;
+  opacity: 0.03;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -203,12 +203,18 @@ dialog::backdrop {
     color: var(--signal);
   }
 
-  /* Panel: hairline-bounded work surface. Depth is drawn, not blurred. */
+  /*
+   * Panel: hairline-bounded work surface. Depth is drawn, not blurred.
+   *
+   * The border carries the whole separation here, since the fill sits only a
+   * few values off the ground — at --line the edge disappeared and panels read
+   * as flat regions rather than surfaces, so it steps up to --line-strong.
+   */
   .panel {
     position: relative;
-    border: 1px solid var(--line);
+    border: 1px solid var(--line-strong);
     border-radius: 0.875rem;
-    background: color-mix(in oklab, var(--surface) 82%, transparent);
+    background: var(--surface);
   }
 
   /* Blueprint field: the faint measured grid behind hero areas. */
@@ -217,6 +223,30 @@ dialog::backdrop {
       linear-gradient(to right, color-mix(in oklab, var(--signal) 6%, transparent) 1px, transparent 1px),
       linear-gradient(to bottom, color-mix(in oklab, var(--signal) 6%, transparent) 1px, transparent 1px);
     background-size: 4.5rem 4.5rem;
+  }
+
+  /*
+   * Transit rule: the indeterminate hairline under a row whose work is still
+   * moving. The sweep is deliberately unhurried — the worker advances roughly
+   * once a minute, so a quick bar would promise progress that is not happening.
+   */
+  .transit-rule {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--info) 16%, transparent);
+  }
+
+  .transit-rule::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    width: 30%;
+    background: linear-gradient(90deg, transparent, var(--info), transparent);
+    animation: transit-sweep 2.6s ease-in-out infinite;
   }
 }
 
@@ -250,6 +280,15 @@ dialog::backdrop {
   }
 }
 
+@keyframes transit-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -258,5 +297,16 @@ dialog::backdrop {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  /*
+   * The blanket reset above would park the sweep at its end state, off the far
+   * edge of the rule. Hold it as a static filled hairline instead, so the row
+   * still reads as active without moving.
+   */
+  .transit-rule::after {
+    position: static;
+    width: 100%;
+    background: color-mix(in oklab, var(--info) 55%, transparent);
   }
 }
