@@ -1,48 +1,64 @@
-import { ArrowDown, BookOpenCheck, Link2, Route } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Brand } from "@/components/layout/brand";
+import { Blueprint } from "@/components/ui/blueprint";
+import { CropMarks } from "@/components/ui/crop-marks";
+import { GridRules } from "@/components/ui/grid-rules";
+import { TickRule } from "@/components/ui/tick-rule";
 
-const routeStops = [
-  { label: "Capture a useful link", icon: Link2 },
-  { label: "Sort it into a topic", icon: Route },
-  { label: "Study, brief, and test", icon: BookOpenCheck },
-];
+const stages = ["Capture", "Sort", "Study"];
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <main className="grid min-h-screen lg:grid-cols-[minmax(22rem,0.85fr)_minmax(30rem,1.15fr)]">
-      <section className="relative hidden overflow-hidden bg-[#10231f] px-10 py-9 text-white lg:flex lg:flex-col xl:px-16 xl:py-12">
-        <Brand inverse />
-        <div className="my-auto max-w-lg py-16">
-          <h1 className="text-[2.75rem] font-semibold leading-[1.04] tracking-[-0.035em] text-white xl:text-[3.35rem]">
-            Keep the insight.
-            <br />
-            Build the understanding.
-          </h1>
-          <p className="mt-6 max-w-md text-base leading-7 text-white/65">
-            LearnIT turns the links worth saving into a connected library of guides, briefings, and quizzes.
-          </p>
-          <div className="relative mt-12 grid gap-1 pl-2">
-            <span className="absolute bottom-7 left-[1.12rem] top-7 w-px bg-white/15" aria-hidden="true" />
-            {routeStops.map(({ label, icon: Icon }, index) => (
-              <div className="relative flex items-center gap-4 py-3" key={label}>
-                <span className="z-10 grid size-9 place-items-center rounded-full border border-white/15 bg-[#18332d] text-[#f0d36a]">
-                  <Icon size={16} />
-                </span>
-                <span className="text-sm font-medium text-white/85">{label}</span>
-                {index < routeStops.length - 1 ? (
-                  <ArrowDown className="ml-auto text-white/20" size={15} aria-hidden="true" />
-                ) : null}
-              </div>
-            ))}
-          </div>
+    <main className="grid min-h-screen lg:grid-cols-[minmax(26rem,1fr)_minmax(28rem,0.85fr)]">
+      <section className="relative hidden overflow-hidden border-r border-line lg:flex lg:flex-col">
+        <GridRules columns={4} className="opacity-70" />
+        <div className="grid-field absolute inset-0" aria-hidden="true" />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(40rem_30rem_at_25%_25%,color-mix(in_oklab,var(--signal)_11%,transparent),transparent_65%)]"
+          aria-hidden="true"
+        />
+        <Blueprint
+          variant="node"
+          className="absolute -left-28 bottom-[-6rem] h-[38rem] w-72 text-signal/20"
+        />
+        <Blueprint variant="star" className="absolute right-14 top-24 h-28 w-28 text-signal/40" />
+        <CropMarks className="inset-8" />
+
+        <div className="relative px-12 pt-12 xl:px-16">
+          <Brand inverse />
         </div>
-        <p className="text-xs text-white/40">A private learning network, built around your sources.</p>
+
+        <div className="relative my-auto px-12 py-20 xl:px-16">
+          <p className="mono-label flex items-center gap-3">
+            <span className="h-px w-10 bg-signal" aria-hidden="true" />
+            Private network
+          </p>
+          <h1 className="display mt-12 text-[clamp(3rem,5.2vw,4.75rem)] leading-[0.9]">
+            Keep the
+            <br />
+            <span className="accent-italic text-signal">insight</span>
+          </h1>
+        </div>
+
+        <div className="relative">
+          <TickRule />
+          <ol className="grid grid-cols-3 border-t border-line">
+            {stages.map((stage, index) => (
+              <li className="border-r border-line px-6 py-7 last:border-r-0 xl:px-8" key={stage}>
+                <p className="mono-label text-signal">{String(index + 1).padStart(2, "0")}</p>
+                <p className="mt-3 font-display text-[0.8rem] font-semibold uppercase tracking-[0.08em] text-ink-soft">
+                  {stage}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
-      <section className="flex min-h-screen items-center justify-center bg-background px-5 py-10 sm:px-8">
-        <div className="w-full max-w-md">
-          <div className="mb-10 lg:hidden">
+
+      <section className="flex min-h-screen items-center justify-center px-6 py-16 sm:px-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-16 lg:hidden">
             <Brand />
           </div>
           {children}

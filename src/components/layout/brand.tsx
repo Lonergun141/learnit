@@ -1,21 +1,34 @@
 import Link from "next/link";
 
+import { cn } from "@/lib/utils/cn";
+
 interface BrandProps {
   inverse?: boolean;
+  /** Rotated to run up the fixed rail. */
+  vertical?: boolean;
 }
 
-export function Brand({ inverse = false }: BrandProps) {
+/**
+ * Wordmark only. Poppins draws a circular full stop, so the signal-green period
+ * reads as a dot in the lockup without needing a separate shape to align.
+ */
+export function Brand({ inverse = false, vertical = false }: BrandProps) {
   return (
     <Link
-      className={`inline-flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal ${inverse ? "text-white" : "text-ink"}`}
+      className={cn(
+        "group inline-block rounded-sm font-display font-bold lowercase leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal focus-visible:ring-offset-4 focus-visible:ring-offset-background",
+        vertical
+          ? "text-[1rem] tracking-[0.12em] [writing-mode:vertical-rl] [transform:rotate(180deg)]"
+          : "text-[1.35rem] tracking-[-0.05em]",
+        inverse ? "text-ink" : "text-ink-soft hover:text-ink",
+      )}
       href="/"
       aria-label="LearnIT home"
     >
-      <span className="relative grid size-8 place-items-center rounded-lg bg-signal text-sm font-bold text-white shadow-[0_5px_14px_rgba(31,143,100,0.28)]">
-        L
-        <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full border-2 border-current bg-[#f0d36a]" />
+      learnit
+      <span className="inline-block text-signal transition-transform duration-300 ease-out group-hover:translate-x-0.5">
+        .
       </span>
-      <span className="text-[1.05rem] font-semibold tracking-[-0.025em]">LearnIT</span>
     </Link>
   );
 }

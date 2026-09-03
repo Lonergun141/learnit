@@ -19,9 +19,9 @@ export default function AuthError({
 
   return (
     <ErrorState
-      icon={<TriangleAlert size={20} />}
-      title="Sign-in is unavailable right now"
-      description="Something went wrong reaching the account service. Try again in a moment."
+      icon={<TriangleAlert size={18} />}
+      title="Sign-in is unavailable"
+      description="Try again in a moment."
       digest={error.digest}
       action={<Button onClick={() => retry()}>Try again</Button>}
     />

@@ -18,12 +18,14 @@ export default function AppError({
   }, [error]);
 
   return (
-    <ErrorState
-      icon={<TriangleAlert size={20} />}
-      title="This page could not be loaded"
-      description="Nothing you have saved was lost. Try again, and if it keeps happening the reference below identifies this failure."
-      digest={error.digest}
-      action={<Button onClick={() => retry()}>Try again</Button>}
-    />
+    <div className="px-6 py-20 sm:px-10 lg:px-14">
+      <ErrorState
+        icon={<TriangleAlert size={18} />}
+        title="This page could not be loaded"
+        description="Nothing you saved was lost. Try again."
+        digest={error.digest}
+        action={<Button onClick={() => retry()}>Try again</Button>}
+      />
+    </div>
   );
 }

@@ -15,9 +15,9 @@ interface RecentItem {
 }
 
 interface RecentItemsProps {
-  title: string;
-  description: string;
   items: RecentItem[];
+  emptyTitle: string;
+  emptyDescription: string;
 }
 
 const dateFormatter = new Intl.DateTimeFormat("en", {
@@ -34,50 +34,46 @@ function itemLabel(item: RecentItem): string {
   }
 }
 
-export function RecentItems({ title, description, items }: RecentItemsProps) {
-  return (
-    <section className="min-w-0 rounded-2xl bg-surface px-5 py-5 shadow-[0_10px_30px_rgba(20,34,31,0.06)] sm:px-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-ink">{title}</h2>
-          <p className="mt-1 text-xs leading-5 text-ink-muted">{description}</p>
-        </div>
-        <Link
-          className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-ink-muted hover:text-signal"
-          href="/library"
-        >
-          All items <ArrowUpRight size={14} />
-        </Link>
+/** Ruled index rows. No card — the sheet's own rules bound the list. */
+export function RecentItems({ items, emptyTitle, emptyDescription }: RecentItemsProps) {
+  if (items.length === 0) {
+    return (
+      <div className="px-6 py-8 sm:px-10 sm:py-10 lg:px-14">
+        <EmptyState icon={<Inbox size={18} />} title={emptyTitle} description={emptyDescription} />
       </div>
-      {items.length === 0 ? (
-        <EmptyState
-          icon={<Inbox size={19} />}
-          title="No stops on this route yet"
-          description="Save your first link and it will appear here while LearnIT prepares it."
-        />
-      ) : (
-        <ul className="mt-5 divide-y divide-line">
-          {items.map((item) => (
-            <li key={item.id}>
-              <Link
-                className="group flex items-center gap-3 py-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
-                href={`/library/${item.id}`}
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-ink group-hover:text-signal">
-                    {itemLabel(item)}
-                  </span>
-                  <span className="mt-1 block truncate text-xs text-ink-faint">
-                    {item.topicName ?? "Awaiting topic"}
-                    {item.date ? ` · ${dateFormatter.format(new Date(item.date))}` : ""}
-                  </span>
-                </span>
-                <StatusBadge status={item.status} />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    );
+  }
+
+  return (
+    <ul>
+      {items.map((item, position) => (
+        <li className="border-b border-line last:border-b-0" key={item.id}>
+          <Link
+            className="group relative grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-4 px-6 py-4 sm:px-10 lg:px-14 transition-colors duration-300 hover:bg-surface-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-signal sm:grid-cols-[2.5rem_minmax(0,1fr)_auto] sm:gap-6"
+            href={`/library/${item.id}`}
+          >
+            <span className="mono-label transition-colors group-hover:text-signal">
+              {String(position + 1).padStart(2, "0")}
+            </span>
+            <span className="min-w-0">
+              <span className="flex items-center gap-2 truncate text-[0.875rem] font-medium text-ink-soft transition-colors group-hover:text-signal">
+                <span className="truncate">{itemLabel(item)}</span>
+                <ArrowUpRight
+                  className="shrink-0 -translate-x-1 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100"
+                  size={14}
+                />
+              </span>
+              <span className="mt-1 block truncate font-mono text-[0.625rem] text-ink-faint">
+                {item.topicName ?? "Awaiting topic"}
+                {item.date ? ` · ${dateFormatter.format(new Date(item.date))}` : ""}
+              </span>
+            </span>
+            <span className="col-start-2 sm:col-start-3">
+              <StatusBadge status={item.status} />
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-import { PageHeader } from "@/components/ui/page-header";
+import { HeroBand } from "@/components/ui/hero-band";
+import { SheetSection } from "@/components/ui/sheet-section";
 import { getTopicsData } from "@/lib/learning/queries";
 
 import { TopicList } from "./components/topic-list";
@@ -11,15 +12,28 @@ export default async function TopicsPage() {
   const topics = await getTopicsData();
 
   return (
-    <div className="grid gap-6">
-      <PageHeader
-        title="Topics"
-        description="Your source library reorganized into reusable paths for deeper learning."
+    <div>
+      <HeroBand
+        eyebrow="Map"
+        figure="burst"
+        title={
+          <>
+            Topic <span className="accent-italic text-signal">routes</span>
+          </>
+        }
+        meta={
+          <div className="flex items-baseline gap-3 sm:block">
+            <p className="display text-[1.75rem] leading-none tabular-nums">
+              {String(topics.length).padStart(2, "0")}
+            </p>
+            <p className="mono-label sm:mt-2">{topics.length === 1 ? "Route" : "Routes"}</p>
+          </div>
+        }
       />
-      <p className="text-xs font-medium tabular-nums text-ink-faint">
-        {topics.length} {topics.length === 1 ? "topic" : "topics"}
-      </p>
-      <TopicList topics={topics} />
+
+      <SheetSection index="01" label="Routes" flush>
+        <TopicList topics={topics} />
+      </SheetSection>
     </div>
   );
 }

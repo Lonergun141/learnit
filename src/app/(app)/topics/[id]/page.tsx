@@ -1,10 +1,11 @@
-import { ArrowLeft, ArrowUpRight, BookOpen, ClipboardList, FileText, Library } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, ClipboardList, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { HeroBand } from "@/components/ui/hero-band";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getTopicData } from "@/lib/learning/queries";
 import { quizSchema } from "@/lib/learning/schemas";
@@ -19,7 +20,7 @@ export const metadata: Metadata = { title: "Topic materials" };
 type MaterialTab = "study-guide" | "briefing" | "quiz";
 
 const tabs = [
-  { id: "study-guide", label: "Study guide", icon: BookOpen },
+  { id: "study-guide", label: "Guide", icon: BookOpen },
   { id: "briefing", label: "Briefing", icon: FileText },
   { id: "quiz", label: "Quiz", icon: ClipboardList },
 ] as const;
@@ -49,91 +50,112 @@ export default async function TopicDetailPage({
     : null;
 
   return (
-    <div className="grid gap-6">
-      <Link className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-ink-muted hover:text-ink" href="/topics">
-        <ArrowLeft size={16} /> Back to topics
-      </Link>
-      <header className="border-b border-line pb-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-[-0.025em] text-ink sm:text-[1.75rem]">{data.topic.name}</h1>
-            <p className="mt-1.5 text-sm text-ink-muted">
-              {data.sources.length} {data.sources.length === 1 ? "source" : "sources"} on this route
-            </p>
-          </div>
-          {artifact ? (
-            <p className="text-xs text-ink-faint">
-              Version {artifact.version} · Generated {formatDate(artifact.created_at)}
-            </p>
-          ) : null}
-        </div>
-      </header>
+    <div>
+      <div className="border-b border-line px-6 py-4 sm:px-10 lg:px-14">
+        <Link className="bracket-link" href="/topics">
+          <ArrowLeft size={13} /> Topics
+        </Link>
+      </div>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]">
-        <section className="min-w-0 overflow-hidden rounded-2xl bg-surface shadow-[0_8px_24px_rgba(20,34,31,0.05)]">
-          <nav className="flex overflow-x-auto border-b border-line px-2 pt-2" aria-label="Topic materials">
-            {tabs.map(({ id: tabId, label, icon: Icon }) => (
-              <Link
-                key={tabId}
-                href={`/topics/${id}?tab=${tabId}`}
-                aria-current={activeTab === tabId ? "page" : undefined}
-                className={cn(
-                  "inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal",
-                  activeTab === tabId
-                    ? "border-signal text-ink"
-                    : "border-transparent text-ink-faint hover:text-ink",
-                )}
-              >
-                <Icon size={16} /> {label}
-              </Link>
-            ))}
-          </nav>
-          <div className="min-h-[32rem] px-5 py-7 sm:px-8 sm:py-9">
-            {!artifact ? (
-              <EmptyState
-                icon={<BookOpen size={20} />}
-                title="This material is still being prepared"
-                description="The latest sources are queued for a topic rebuild. Return after the worker finishes the route."
-              />
-            ) : activeTab === "quiz" ? (
-              parsedQuiz?.success ? (
-                <Quiz quiz={parsedQuiz.data} />
-              ) : (
-                <EmptyState
-                  icon={<ClipboardList size={20} />}
-                  title="Quiz unavailable"
-                  description="This quiz did not pass the content safety contract and needs to be rebuilt."
-                />
-              )
-            ) : artifact.content_markdown ? (
-              <MarkdownDocument markdown={artifact.content_markdown} />
+      <HeroBand
+        eyebrow="Topic"
+        title={data.topic.name}
+        meta={
+          <div className="mono-label flex gap-5 sm:block">
+            <span className="block text-ink-soft">
+              {String(data.sources.length).padStart(2, "0")}{" "}
+              {data.sources.length === 1 ? "source" : "sources"}
+            </span>
+            {artifact ? (
+              <span className="block sm:mt-2">
+                v{artifact.version} · {formatDate(artifact.created_at)}
+              </span>
+            ) : null}
+          </div>
+        }
+      />
+
+      <nav
+        className="grid grid-cols-3 border-b border-line"
+        aria-label="Topic materials"
+      >
+        {tabs.map(({ id: tabId, label, icon: Icon }, position) => (
+          <Link
+            key={tabId}
+            href={`/topics/${id}?tab=${tabId}`}
+            aria-current={activeTab === tabId ? "page" : undefined}
+            className={cn(
+              "group relative flex min-h-16 flex-col justify-center gap-1.5 border-r border-line px-6 transition-colors duration-300 last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-signal sm:px-10",
+              activeTab === tabId
+                ? "bg-signal-soft text-signal"
+                : "text-ink-faint hover:bg-surface-muted/40 hover:text-ink-soft",
+            )}
+          >
+            <span
+              className={cn(
+                "absolute inset-x-0 top-0 h-px transition-colors",
+                activeTab === tabId ? "bg-signal" : "bg-transparent",
+              )}
+              aria-hidden="true"
+            />
+            <span className="mono-label">{String(position + 1).padStart(2, "0")}</span>
+            <span className="flex items-center gap-2.5 font-display text-[0.85rem] font-semibold uppercase tracking-[0.07em]">
+              <Icon size={15} /> {label}
+            </span>
+          </Link>
+        ))}
+      </nav>
+
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="min-w-0 px-6 py-12 sm:px-10 lg:px-14 lg:py-16">
+          {!artifact ? (
+            <EmptyState
+              icon={<BookOpen size={18} />}
+              title="Still being prepared"
+              description="Return once the worker finishes this route."
+            />
+          ) : activeTab === "quiz" ? (
+            parsedQuiz?.success ? (
+              <Quiz quiz={parsedQuiz.data} />
             ) : (
               <EmptyState
-                icon={<FileText size={20} />}
-                title="Document unavailable"
-                description="This material has no readable Markdown content yet."
+                icon={<ClipboardList size={18} />}
+                title="Quiz unavailable"
+                description="This quiz needs to be rebuilt."
               />
-            )}
-          </div>
-        </section>
-
-        <aside className="rounded-2xl bg-surface px-5 py-5 shadow-[0_8px_24px_rgba(20,34,31,0.05)]">
-          <div className="flex items-center gap-2">
-            <Library className="text-ink-faint" size={17} />
-            <h2 className="text-sm font-semibold text-ink">Sources</h2>
-          </div>
-          {data.sources.length === 0 ? (
-            <p className="mt-4 text-sm leading-6 text-ink-muted">No sources have reached this topic yet.</p>
+            )
+          ) : artifact.content_markdown ? (
+            <MarkdownDocument markdown={artifact.content_markdown} />
           ) : (
-            <ul className="mt-3 divide-y divide-line">
+            <EmptyState
+              icon={<FileText size={18} />}
+              title="Document unavailable"
+              description="No readable content yet."
+            />
+          )}
+        </div>
+
+        <aside className="border-t border-line lg:border-l lg:border-t-0">
+          <p className="mono-label border-b border-line px-6 py-4 sm:px-10 lg:px-8">Sources</p>
+          {data.sources.length === 0 ? (
+            <p className="px-6 py-8 text-sm text-ink-faint sm:px-10 lg:px-8">None yet.</p>
+          ) : (
+            <ul className="lg:sticky lg:top-28">
               {data.sources.map((source) => (
-                <li key={source.id}>
-                  <Link className="group block py-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal" href={`/library/${source.id}`}>
-                    <span className="flex items-start gap-2 text-sm font-medium text-ink group-hover:text-signal">
-                      <span className="min-w-0 flex-1 break-words">{source.title ?? hostnameLabel(source.canonical_url)}</span>
-                      <ArrowUpRight className="mt-0.5 shrink-0" size={14} />
+                <li className="border-b border-line" key={source.id}>
+                  <Link
+                    className="group block px-6 py-5 transition-colors duration-300 hover:bg-surface-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-signal sm:px-10 lg:px-8"
+                    href={`/library/${source.id}`}
+                  >
+                    <span className="flex items-start gap-2 text-[0.8125rem] font-medium leading-6 text-ink-soft transition-colors group-hover:text-signal">
+                      <span className="min-w-0 flex-1 break-words">
+                        {source.title ?? hostnameLabel(source.canonical_url)}
+                      </span>
+                      <ArrowUpRight className="mt-1 shrink-0" size={13} />
                     </span>
-                    <span className="mt-2 block"><StatusBadge status={source.status} /></span>
+                    <span className="mt-3 block">
+                      <StatusBadge status={source.status} />
+                    </span>
                   </Link>
                 </li>
               ))}
