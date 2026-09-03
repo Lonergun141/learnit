@@ -181,6 +181,27 @@ match the `APP_BASE_URL` function secret so digest links resolve.
 Then add the deployed origin to Supabase Auth → URL Configuration, as the Site
 URL and as a redirect URL including `/auth/callback`.
 
+### If a confirmation email lands on localhost
+
+Both halves above have to be right, and the failure looks identical either way:
+the account is created, the email arrives, and the confirm link drops the user on
+`http://localhost:3000`.
+
+Copy the link out of the email and read its `redirect_to=` parameter.
+
+- **`redirect_to` is localhost** — the app sent it. `NEXT_PUBLIC_APP_URL` in the
+  Vercel project is blank or still points at localhost. It is a `NEXT_PUBLIC_`
+  name, so it is inlined at build time: change it and **redeploy**, because an
+  existing deployment keeps the value it was built with.
+- **`redirect_to` is the real origin** — Supabase discarded it. That origin is
+  not in Auth → URL Configuration → Redirect URLs, so it fell back to the Site
+  URL, which is still localhost. Add the origin (with `/auth/callback`) and set
+  the Site URL.
+
+The app refuses a loopback origin outside development, so a stale
+`NEXT_PUBLIC_APP_URL` now falls through to the Vercel production domain instead
+of being mailed out — but the Supabase allow-list still has to be correct.
+
 ## Verifying a live deployment
 
 ```bash
