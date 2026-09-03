@@ -20,7 +20,8 @@ interface PreferencesFormProps {
   };
 }
 
-const timezones = ["UTC", "Asia/Shanghai", "Asia/Manila", "Asia/Singapore", "Europe/London", "America/New_York", "America/Los_Angeles"];
+// Asia/Manila leads because it is the account default; the rest follow it.
+const timezones = ["Asia/Manila", "Asia/Singapore", "Asia/Shanghai", "Europe/London", "America/New_York", "America/Los_Angeles", "UTC"];
 
 const toggleClassName =
   "mt-0.5 size-4 shrink-0 accent-[#c3eda1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal";
