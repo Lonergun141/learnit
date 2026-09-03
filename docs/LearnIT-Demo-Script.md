@@ -5,7 +5,8 @@ Target length: **~4 minutes** of demo inside a longer pitch. Everything here is 
 
 - **App:** learnit-mauve.vercel.app
 - **Bot:** @learnit_teampura_bot
-- **Presenter(s):** `[PRESENTER NAME — ROLE]` *(driver)* · `[PRESENTER NAME — ROLE]` *(narrator, optional)*
+- **Team:** TeamPura (Abba) · Hackathon 09.04.2026
+- **Presenters:** Iven Dioneda · Clyde Givero · Brylle Callo *(assign one driver + one narrator; the third runs backup/Telegram)*
 
 ---
 
@@ -80,9 +81,9 @@ Land on the **Dashboard**.
 3. Show the bot reply: **"added one item"**, then the **daily digest** message with a link back to the topic.
 
 **Say:**
-> "You don't even need the website. I send a link straight to our Telegram bot — it confirms it's added, and once it's built it messages me back a daily digest with a link right into the topic. Point it at a YouTube playlist and it captures new videos on its own."
+> "You don't even need the website. I send a link straight to our Telegram bot — it confirms it's added, and once it's built it messages me back a daily digest with a link right into the topic. And I can point it at a whole YouTube playlist — I paste the playlist in Settings, enable captures, and hit Sync; every video comes into the Library as origin *YouTube playlist* and gets built automatically."
 
-**Fallback:** if sending live is risky, show a **prior bot reply already in the chat history** and narrate it.
+**Fallback:** if sending live is risky, show a **prior bot reply already in the chat history** and narrate it. For the playlist, show a source already in the Library tagged **YouTube playlist** rather than syncing live.
 
 ---
 
@@ -102,6 +103,8 @@ Hand back to slides for the tech/ask.
    - Capture + build: `jam.dev/c/b19dd5f2-4e83-4386-816e-38f37ba1bfee`
    - Telegram automation: `jam.dev/c/2a4bf8c2-d15e-4a2c-8553-d6c50dba246b`
    - Taking the quiz: `jam.dev/c/fa716726-054d-4b53-986f-6b75b374bf11`
+   - Playlist add & sync (pt 1): `jam.dev/c/f57f27c4-fd82-4bc5-9ba3-3a70e53363cd`
+   - Playlist items in Library (pt 2): `jam.dev/c/3978b14d-8875-458b-9241-7f4b2ffc3f3b`
 3. Never debug live in front of judges. Switch to the recording and keep the story moving.
 
 ---

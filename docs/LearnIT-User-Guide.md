@@ -86,6 +86,21 @@ Open **04 Settings → Integrations** to make LearnIT run on its own:
 - **Daily capture limit** — a guardrail so automated capture stays under control.
 - **Telegram** — connect or disconnect the bot (see section 3).
 
+### Auto-capture a YouTube playlist (step by step)
+
+Point LearnIT at a playlist once, and it will keep pulling in new videos for you.
+
+1. In **04 Settings → Integrations**, find the **playlist** field.
+2. Paste your YouTube playlist link. LearnIT reads the **playlist ID straight from the link** — you don't have to find it yourself.
+3. Turn on **Enable captures**.
+4. Click **Save**. Your playlist is now armed for polling.
+5. To pull it in right away, go to **01 Dashboard** and use **Sync from playlist** (you don't have to wait for the automatic poll). Refresh the page to see the results.
+6. Open **02 Library** — the new items appear with origin **YouTube playlist**, and travel the same New → Fetched → Sorting → Done pipeline as any other source. They'll be ready in a few minutes.
+
+> Playlist polling respects your **daily capture limit**, so a large playlist is brought in gradually rather than all at once.
+
+*Recorded walkthrough:* [Part 1 — add & sync a playlist](https://jam.dev/c/f57f27c4-fd82-4bc5-9ba3-3a70e53363cd) · [Part 2 — playlist items in the Library](https://jam.dev/c/3978b14d-8875-458b-9241-7f4b2ffc3f3b)
+
 ---
 
 ## Quick reference
@@ -98,7 +113,8 @@ Open **04 Settings → Integrations** to make LearnIT run on its own:
 | Fix a stuck item | **02 Library** | Open it → **Retry** |
 | Study | **03 Topics** | Open a topic → Guide → Briefing → Quiz |
 | Get a daily summary | **04 Settings** | Set digest hour + timezone, connect Telegram |
-| Auto-capture a playlist | **04 Settings** | Add a YouTube playlist |
+| Auto-capture a playlist | **04 Settings** | Paste a playlist link → Enable captures → Save |
+| Pull a playlist in now | **01 Dashboard** | **Sync from playlist** |
 
 ---
 
