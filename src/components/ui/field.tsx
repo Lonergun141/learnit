@@ -1,3 +1,7 @@
+"use client";
+
+import { Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils/cn";
@@ -51,6 +55,50 @@ export function InputField({ label, error, hint, className, id, ...props }: Inpu
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${fieldId}-error` : props["aria-describedby"]}
       />
+    </FieldFrame>
+  );
+}
+
+interface PasswordFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
+  label: string;
+  error?: string;
+  hint?: string;
+}
+
+/**
+ * A password input with a reveal toggle. Visibility lives in component state and
+ * only swaps the input `type`, so the field stays uncontrolled and whatever was
+ * already typed survives the switch.
+ */
+export function PasswordField({ label, error, hint, className, id, ...props }: PasswordFieldProps) {
+  const fieldId = id ?? props.name;
+  if (!fieldId) throw new Error("PasswordField requires an id or name");
+
+  const [revealed, setRevealed] = useState(false);
+  const RevealIcon = revealed ? EyeOff : Eye;
+
+  return (
+    <FieldFrame label={label} htmlFor={fieldId} error={error} hint={hint}>
+      <div className="relative">
+        <input
+          {...props}
+          id={fieldId}
+          type={revealed ? "text" : "password"}
+          className={cn(controlClassName, "pr-12", error && "border-danger/60", className)}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${fieldId}-error` : props["aria-describedby"]}
+        />
+        <button
+          type="button"
+          className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-lg text-ink-faint transition-colors duration-200 hover:text-ink focus-visible:outline-none focus-visible:text-signal focus-visible:ring-2 focus-visible:ring-signal/40"
+          onClick={() => setRevealed((current) => !current)}
+          aria-controls={fieldId}
+          aria-label={revealed ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+          aria-pressed={revealed}
+        >
+          <RevealIcon size={16} aria-hidden="true" />
+        </button>
+      </div>
     </FieldFrame>
   );
 }

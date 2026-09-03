@@ -11,21 +11,29 @@ export const loginSchema = z.object({
   password: z.string().min(8, "Enter your password").max(200),
 });
 
-export const signupSchema = z.object({
-  displayName: z.string().trim().min(2, "Use at least 2 characters").max(80),
-  email,
-  password: z
-    .string()
-    .min(12, "Use at least 12 characters")
-    .max(200)
-    .regex(/[A-Za-z]/, "Add at least one letter")
-    .regex(/[0-9]/, "Add at least one number")
-    .regex(/[^A-Za-z0-9]/, "Add at least one symbol"),
-});
+export const signupSchema = z
+  .object({
+    displayName: z.string().trim().min(2, "Use at least 2 characters").max(80),
+    email,
+    password: z
+      .string()
+      .min(12, "Use at least 12 characters")
+      .max(200)
+      .regex(/[A-Za-z]/, "Add at least one letter")
+      .regex(/[0-9]/, "Add at least one number")
+      .regex(/[^A-Za-z0-9]/, "Add at least one symbol"),
+    confirmPassword: z.string().max(200),
+  })
+  .refine((values) => values.confirmPassword === values.password, {
+    message: "Both passwords must match",
+    path: ["confirmPassword"],
+  });
 
 export interface AuthActionState {
   message?: string;
-  fieldErrors?: Partial<Record<"displayName" | "email" | "password", string[]>>;
+  fieldErrors?: Partial<
+    Record<"displayName" | "email" | "password" | "confirmPassword", string[]>
+  >;
   /** Echoed back so a rejected submission redisplays what was typed. */
   values?: { displayName?: string; email?: string };
 }
