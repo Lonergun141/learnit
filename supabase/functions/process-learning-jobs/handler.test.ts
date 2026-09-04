@@ -131,3 +131,60 @@ describe("handleWorkerRequest", () => {
     expect(deps.claimJobs).toHaveBeenCalledWith(10, "worker-1");
   });
 });
+
+describe("recording why a job failed", () => {
+  function failingDependencies(error: unknown) {
+    const failJob = vi
+      .fn<WorkerDependencies["failJob"]>()
+      .mockResolvedValue("failed");
+    return {
+      failJob,
+      deps: dependencies({
+        claimJobs: vi.fn().mockResolvedValue([jobs[0]]),
+        processJob: vi.fn().mockRejectedValue(error),
+        failJob,
+      }),
+    };
+  }
+
+  it("keeps the provider cause alongside the wrapper message", async () => {
+    const { failJob, deps } = failingDependencies(
+      new ProviderError("Gemini request could not be completed", true, {
+        cause: new Error("429 RESOURCE_EXHAUSTED: quota exceeded"),
+      }),
+    );
+
+    await handleWorkerRequest(request(), deps);
+
+    expect(failJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error:
+          "Gemini request could not be completed: 429 RESOURCE_EXHAUSTED: quota exceeded",
+      }),
+    );
+  });
+
+  it("never writes a provider key into the job record", async () => {
+    const { failJob, deps } = failingDependencies(
+      new ProviderError("Gemini request could not be completed", true, {
+        cause: new Error("403 on https://api.test/v1?key=AIzaSyDUMMYKEYVALUE1234567"),
+      }),
+    );
+
+    await handleWorkerRequest(request(), deps);
+
+    const recorded = failJob.mock.calls[0][0].error;
+    expect(recorded).not.toContain("AIzaSyDUMMYKEYVALUE1234567");
+    expect(recorded).toContain("[redacted]");
+  });
+
+  it("falls back to a generic reason when nothing useful was thrown", async () => {
+    const { failJob, deps } = failingDependencies("not an error object");
+
+    await handleWorkerRequest(request(), deps);
+
+    expect(failJob).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "Job processing failed" }),
+    );
+  });
+});
