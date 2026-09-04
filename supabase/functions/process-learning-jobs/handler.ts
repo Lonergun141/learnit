@@ -43,11 +43,38 @@ export interface WorkerDependencies {
   notifyTerminalFailure?(job: LearningJob): Promise<void>;
 }
 
+/**
+ * Strips anything that looks like a credential out of a provider message.
+ *
+ * These strings are stored on the job and shown on the item page, so a provider
+ * that echoes the request back must not put a key in the database.
+ */
+function redactSecrets(text: string): string {
+  return text
+    .replace(/AIza[0-9A-Za-z_-]{10,}/g, "[redacted]")
+    .replace(/([?&](?:key|api_?key|access_token|token)=)[^&\s]+/gi, "$1[redacted]");
+}
+
+/**
+ * Collects a message and the messages of everything that caused it.
+ *
+ * Providers are wrapped in a ProviderError carrying a stable, readable summary,
+ * which on its own says only that a request failed — never whether the cause was
+ * a quota, a rejected key, or a timeout. Keeping the chain means the reason a
+ * job died is recorded with the job rather than left in the runtime logs.
+ */
+function errorChain(error: unknown, depth = 0): string[] {
+  if (depth > 3 || !(error instanceof Error)) return [];
+  return [
+    error.message.trim(),
+    ...errorChain((error as { cause?: unknown }).cause, depth + 1),
+  ].filter(Boolean);
+}
+
 function safeErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message.trim().slice(0, 500);
-  }
-  return "Job processing failed";
+  const chain = [...new Set(errorChain(error))];
+  if (chain.length === 0) return "Job processing failed";
+  return redactSecrets(chain.join(": ")).slice(0, 500);
 }
 
 async function requestedBatchSize(request: Request): Promise<number> {
@@ -85,6 +112,13 @@ export async function handleWorkerRequest(
       succeeded += 1;
     } catch (error) {
       failed += 1;
+      const reason = safeErrorMessage(error);
+      console.error(JSON.stringify({
+        event: "learning_job_error",
+        jobId: job.id,
+        stage: job.stage,
+        reason,
+      }));
       const payloadPatch: Record<string, JsonValue> = {};
       if (error instanceof PendingProviderJobError) {
         payloadPatch.supadataTranscriptJobId = error.providerJobId;
@@ -93,7 +127,7 @@ export async function handleWorkerRequest(
         const outcome = await dependencies.failJob({
           jobId: job.id,
           workerId: dependencies.workerId,
-          error: safeErrorMessage(error),
+          error: reason,
           retryable: error instanceof ProviderError ? error.retryable : true,
           payloadPatch,
         });
